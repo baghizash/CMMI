@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import {
   QrCode, Users, LogOut, Plus, Search, Trash2, Printer, CheckCircle2,
   XCircle, AlertCircle, RefreshCw, Camera, ArrowRight, Shield, BookOpen,
@@ -8,8 +7,8 @@ import {
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { QRCodeSVG } from 'qrcode.react';
+import * as api from './services/api';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const CLASSES = ['X IPA 1', 'X IPA 2', 'XI IPS 1', 'XI IPS 2', 'XII MIPA'];
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const SUBJECTS = ['Matematika', 'Fisika', 'Kimia', 'Biologi', 'Bahasa Indonesia', 'Bahasa Inggris', 'Sejarah', 'Ekonomi', 'PKN', 'Olahraga'];
@@ -64,64 +63,69 @@ export default function App() {
   };
 
   const fetchStudents = async () => {
-    try { const r = await axios.get(`${BACKEND_URL}/api/students`, { params: { class_name: selectedClass, search: searchQuery } }); setStudents(r.data); } catch (e) {}
+    try { const r = await api.getStudents({ class_name: selectedClass, search: searchQuery }); setStudents(r.data); } catch (e) {}
   };
   const fetchAttendance = async () => {
-    try { const r = await axios.get(`${BACKEND_URL}/api/attendance`, { params: { date: selectedDate, class_name: selectedClass, status: statusFilter } }); setAttendance(r.data); } catch (e) {}
+    try { const r = await api.getAttendance({ date: selectedDate, class_name: selectedClass, status: statusFilter }); setAttendance(r.data); } catch (e) {}
   };
   const fetchSubjectAttendance = async () => {
-    try { const r = await axios.get(`${BACKEND_URL}/api/subject-attendance`, { params: { date: selectedDate, class_name: selectedClass } }); setSubjectAttendance(r.data); } catch (e) {}
+    try { const r = await api.getSubjectAttendance({ date: selectedDate, class_name: selectedClass }); setSubjectAttendance(r.data); } catch (e) {}
   };
   const fetchStats = async () => {
-    try { const r = await axios.get(`${BACKEND_URL}/api/dashboard/stats`, { params: { date: selectedDate } }); setStats(r.data); } catch (e) {}
+    try { const r = await api.getDashboardStats({ date: selectedDate }); setStats(r.data); } catch (e) {}
   };
   const fetchSchedules = async () => {
-    try { const r = await axios.get(`${BACKEND_URL}/api/schedules`, { params: { class_name: selectedClass } }); setSchedules(r.data); } catch (e) {}
+    try { const r = await api.getSchedules({ class_name: selectedClass }); setSchedules(r.data); } catch (e) {}
   };
   const fetchPiket = async () => {
-    try { const r = await axios.get(`${BACKEND_URL}/api/guru-piket`); setPiketList(r.data); } catch (e) {}
+    try { const r = await api.getGuruPiket(); setPiketList(r.data); } catch (e) {}
   };
 
   const handleLogin = async (e) => {
     e.preventDefault(); setLoginError('');
     try {
-      const r = await axios.post(`${BACKEND_URL}/api/auth/login`, { username: loginUsername, password: loginPassword });
+      const r = await api.login(loginUsername, loginPassword);
       if (r.data.success) {
         const u = { name: r.data.name, role: r.data.role, token: r.data.token };
         setUser(u); localStorage.setItem('school_user', JSON.stringify(u));
         notify('success', `Selamat datang, ${r.data.name}!`);
       }
-    } catch (e) { setLoginError(e.response?.data?.detail || 'Login gagal.'); }
+    } catch (e) { setLoginError(e.response?.data?.message || 'Login gagal.'); }
   };
 
-  const handleDemoLogin = (role) => {
-    const u = role === 'admin'
-      ? { name: 'Administrator Sekolah', role: 'admin', token: 'admin-token' }
-      : { name: 'Ibu Guru (Piket)', role: 'teacher', token: 'teacher-token' };
-    setUser(u); localStorage.setItem('school_user', JSON.stringify(u));
-    notify('success', `Login demo sebagai ${role.toUpperCase()} berhasil!`);
+  const handleDemoLogin = async (username, password) => {
+    try {
+      const r = await api.login(username, password);
+      if (r.data.success) {
+        const u = { name: r.data.name, role: r.data.role, token: r.data.token };
+        setUser(u); localStorage.setItem('school_user', JSON.stringify(u));
+        notify('success', `Login demo sebagai ${r.data.role.toUpperCase()} berhasil!`);
+      }
+    } catch (e) {
+      setLoginError('Login demo gagal. Pastikan backend berjalan.');
+    }
   };
 
   const handleLogout = () => { setUser(null); localStorage.removeItem('school_user'); };
 
   const handleSeedData = async () => {
-    try { setLoading(true); const r = await axios.post(`${BACKEND_URL}/api/students/seed-demo`); notify('success', r.data.message); fetchAll(); }
+    try { setLoading(true); const r = await api.seedDemo(); notify('success', r.data.message); fetchAll(); }
     catch { notify('error', 'Gagal seed data.'); } finally { setLoading(false); }
   };
 
   const handleCreateStudent = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${BACKEND_URL}/api/students`, newStudent);
+      await api.createStudent(newStudent);
       notify('success', 'Siswa baru + QR unik berhasil ditambahkan!');
       setShowAddStudent(false); setNewStudent({ nis: '', name: '', class_name: 'X IPA 1', gender: 'L', photo_url: '' });
       fetchStudents(); fetchStats();
-    } catch (e) { notify('error', e.response?.data?.detail || 'Gagal.'); }
+    } catch (e) { notify('error', e.response?.data?.message || 'Gagal.'); }
   };
 
   const handleDeleteStudent = async (id) => {
     if (!window.confirm("Hapus siswa ini?")) return;
-    try { await axios.delete(`${BACKEND_URL}/api/students/${id}`); notify('success', 'Terhapus.'); fetchStudents(); fetchStats(); }
+    try { await api.deleteStudent(id); notify('success', 'Terhapus.'); fetchStudents(); fetchStats(); }
     catch { notify('error', 'Gagal.'); }
   };
 
@@ -139,7 +143,7 @@ export default function App() {
     if (!code) return;
     try {
       if (scanMode === 'mapel') {
-        const r = await axios.post(`${BACKEND_URL}/api/subject-attendance/scan`, {
+        const r = await api.scanSubjectAttendance({
           qr_code: code, nis: code,
           subject_name: subjectScanConfig.subject_name,
           period: subjectScanConfig.period,
@@ -149,7 +153,7 @@ export default function App() {
         notify(r.data.already ? 'info' : 'success', r.data.message);
         fetchSubjectAttendance();
       } else {
-        const r = await axios.post(`${BACKEND_URL}/api/attendance/scan`, {
+        const r = await api.scanAttendance({
           qr_code: code, nis: code, mode: scanMode, recorded_by: user?.name || 'Guru Piket'
         });
         setScanResult({ ...r.data, mode: scanMode });
@@ -158,14 +162,14 @@ export default function App() {
       }
       setManualCodeInput('');
     } catch (e) {
-      const m = e.response?.data?.detail || 'QR tidak valid.';
+      const m = e.response?.data?.message || 'QR tidak valid.';
       notify('error', m); setScanResult({ success: false, message: m });
     }
   };
 
   const handleManualStatusUpdate = async (studentId, status) => {
     try {
-      await axios.post(`${BACKEND_URL}/api/attendance/manual`, { student_id: studentId, date: selectedDate, status, recorded_by: user?.name });
+      await api.manualAttendance({ student_id: studentId, date: selectedDate, status, recorded_by: user?.name });
       notify('success', `Status diperbarui: ${status}`); fetchAttendance(); fetchStats();
     } catch { notify('error', 'Gagal.'); }
   };
@@ -173,7 +177,7 @@ export default function App() {
   const handleCreateSchedule = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${BACKEND_URL}/api/schedules`, { ...newSchedule, period: parseInt(newSchedule.period) });
+      await api.createSchedule({ ...newSchedule, period: parseInt(newSchedule.period) });
       notify('success', 'Jadwal berhasil ditambahkan.');
       setShowAddSchedule(false); fetchSchedules();
     } catch { notify('error', 'Gagal tambah jadwal.'); }
@@ -181,14 +185,14 @@ export default function App() {
 
   const handleDeleteSchedule = async (id) => {
     if (!window.confirm("Hapus jadwal ini?")) return;
-    try { await axios.delete(`${BACKEND_URL}/api/schedules/${id}`); notify('success', 'Terhapus.'); fetchSchedules(); }
+    try { await api.deleteSchedule(id); notify('success', 'Terhapus.'); fetchSchedules(); }
     catch { notify('error', 'Gagal.'); }
   };
 
   const handleCreatePiket = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${BACKEND_URL}/api/guru-piket`, newPiket);
+      await api.createGuruPiket(newPiket);
       notify('success', 'Guru piket ditambahkan.');
       setShowAddPiket(false); fetchPiket(); fetchStats();
     } catch { notify('error', 'Gagal.'); }
@@ -196,15 +200,16 @@ export default function App() {
 
   const handleDeletePiket = async (id) => {
     if (!window.confirm("Hapus data piket?")) return;
-    try { await axios.delete(`${BACKEND_URL}/api/guru-piket/${id}`); notify('success', 'Terhapus.'); fetchPiket(); }
+    try { await api.deleteGuruPiket(id); notify('success', 'Terhapus.'); fetchPiket(); }
     catch { notify('error', 'Gagal.'); }
   };
 
   const handleExportExcel = () => {
-    const params = new URLSearchParams();
-    if (selectedDate) params.append('date', selectedDate);
-    if (selectedClass && selectedClass !== 'Semua Kelas') params.append('class_name', selectedClass);
-    window.open(`${BACKEND_URL}/api/export/excel?${params.toString()}`, '_blank');
+    const excelUrl = api.getExcelExport({
+      date: selectedDate,
+      class_name: selectedClass !== 'Semua Kelas' ? selectedClass : undefined,
+    });
+    window.open(excelUrl, '_blank');
     notify('success', 'Excel sedang di-download...');
   };
 
@@ -271,10 +276,10 @@ export default function App() {
           <div className="mt-8 pt-6 border-t border-slate-200">
             <p className="text-xs text-center text-slate-500 mb-3 font-medium uppercase">Demo Login</p>
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => handleDemoLogin('admin')} data-testid="demo-login-admin" className="py-2.5 px-3 bg-slate-100 hover:bg-indigo-50 text-indigo-700 font-medium rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200">
+              <button onClick={() => handleDemoLogin('admin', 'admin123')} data-testid="demo-login-admin" className="py-2.5 px-3 bg-slate-100 hover:bg-indigo-50 text-indigo-700 font-medium rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200">
                 <Shield className="w-4 h-4" /> Login Admin
               </button>
-              <button onClick={() => handleDemoLogin('teacher')} data-testid="demo-login-teacher" className="py-2.5 px-3 bg-slate-100 hover:bg-emerald-50 text-emerald-700 font-medium rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200">
+              <button onClick={() => handleDemoLogin('guru', 'guru123')} data-testid="demo-login-teacher" className="py-2.5 px-3 bg-slate-100 hover:bg-emerald-50 text-emerald-700 font-medium rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200">
                 <Camera className="w-4 h-4" /> Login Guru
               </button>
             </div>
