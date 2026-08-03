@@ -11,8 +11,8 @@ use App\Http\Controllers\Api\GuruPiketController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExportController;
 
-// Public routes
-Route::post('/auth/login', [AuthController::class, 'login']);
+// Public routes - CSRF exempt
+Route::post('/auth/login', [AuthController::class, 'login'])->withoutMiddleware('auth:sanctum');
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
