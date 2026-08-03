@@ -13,12 +13,28 @@ const apiClient = axios.create({
 // Add token to requests
 apiClient.interceptors.request.use((config) => {
   const user = localStorage.getItem('school_user');
+  console.log('Request interceptor - stored user:', user);
   if (user) {
     const { token } = JSON.parse(user);
+    console.log('Adding token to request:', token);
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    console.log('No user token found in localStorage');
   }
   return config;
 });
+
+// Add response interceptor untuk catch errors
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log('API Response OK:', response.config.url, response.status, response.data);
+    return response;
+  },
+  (error) => {
+    console.error('API Error:', error.config?.url, error.response?.status, error.response?.data);
+    return Promise.reject(error);
+  }
+);
 
 // Auth APIs
 export const login = (username, password) =>

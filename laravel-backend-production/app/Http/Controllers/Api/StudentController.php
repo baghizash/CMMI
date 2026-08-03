@@ -19,47 +19,52 @@ class StudentController extends Controller
             $query->where('class_name', $request->class_name);
         }
 
-        if ($request->has('search')) {
+        if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'regex', ".*{$search}.*i")
-                  ->orWhere('nis', 'regex', ".*{$search}.*i")
-                  ->orWhere('qr_code', 'regex', ".*{$search}.*i");
+                $q->whereRaw("LOWER(name) LIKE ?", ["%".strtolower($search)."%"])
+                  ->orWhereRaw("LOWER(nis) LIKE ?", ["%".strtolower($search)."%"])
+                  ->orWhereRaw("LOWER(qr_code) LIKE ?", ["%".strtolower($search)."%"]);
             });
         }
 
-        return response()->json($query->get());
+        $data = $query->get();
+        \Log::info('StudentController.index - query result count: ' . $data->count());
+        return response()->json($data);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'nis' => 'required|string',
+            'nis' => 'required|string|unique:students',
             'name' => 'required|string',
             'class_name' => 'required|string',
             'gender' => 'required|string',
+            'photo_url' => 'nullable|string',
         ]);
 
-        $existing = Student::where('nis', $request->nis)->first();
-        if ($existing) {
+        try {
+            $student = Student::create([
+                'id' => (string) Str::uuid(),
+                'nis' => $request->nis,
+                'name' => $request->name,
+                'class_name' => $request->class_name,
+                'gender' => $request->gender,
+                'photo_url' => $request->photo_url ?? null,
+                'qr_code' => 'SCH-QR-' . strtoupper(Str::random(12)),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $student,
+                'message' => 'Siswa berhasil ditambahkan.'
+            ], 201);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => "Siswa dengan NIS {$request->nis} sudah terdaftar."
-            ], 400);
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
         }
-
-        $student = Student::create([
-            'id' => (string) Str::uuid(),
-            'nis' => $request->nis,
-            'name' => $request->name,
-            'class_name' => $request->class_name,
-            'gender' => $request->gender,
-            'photo_url' => $request->photo_url ?? '',
-            'qr_code' => 'SCH-QR-' . strtoupper(substr(Str::random(10), 0, 10)),
-            'created_at' => now()->toIso8601String(),
-        ]);
-
-        return response()->json($student, 201);
     }
 
     public function update(Request $request, $id)

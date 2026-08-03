@@ -53,8 +53,25 @@ export default function App() {
   const [newPiket, setNewPiket] = useState({ date: new Date().toISOString().split('T')[0], teacher_name: '', notes: '' });
 
   useEffect(() => {
-    if (user) { fetchAll(); }
-  }, [user, selectedClass, selectedDate, statusFilter]);
+    if (!user) return;
+    
+    console.log('useEffect triggered - activeTab:', activeTab);
+    
+    if (activeTab === 'students') {
+      console.log('Calling fetchStudents from useEffect');
+      fetchStudents();
+    } else if (activeTab === 'dashboard') {
+      fetchStats();
+    } else if (activeTab === 'recap') { 
+      fetchAttendance(); 
+      fetchSubjectAttendance(); 
+    } else if (activeTab === 'schedule') { 
+      fetchSchedules(); 
+      fetchPiket(); 
+    } else if (activeTab === 'scanner') {
+      fetchStudents();
+    }
+  }, [user, activeTab]);
 
   const notify = (t, m) => { setNotification({ type: t, message: m }); setTimeout(() => setNotification(null), 3500); };
 
@@ -63,46 +80,74 @@ export default function App() {
   };
 
   const fetchStudents = async () => {
-    try { const r = await api.getStudents({ class_name: selectedClass, search: searchQuery }); setStudents(r.data); } catch (e) {}
+    try { 
+      console.log('Fetching students with params:', { class_name: selectedClass, search: searchQuery });
+      const r = await api.getStudents({ class_name: selectedClass, search: searchQuery }); 
+      console.log('Students response count:', r.data.length, 'data:', r.data);
+      if (r.data && Array.isArray(r.data)) {
+        setStudents(r.data);
+        console.log('Students state updated to:', r.data.length, 'items');
+      }
+    } catch (e) { 
+      console.error('Fetch students error:', e);
+      setStudents([]);
+    }
   };
   const fetchAttendance = async () => {
-    try { const r = await api.getAttendance({ date: selectedDate, class_name: selectedClass, status: statusFilter }); setAttendance(r.data); } catch (e) {}
+    try { 
+      const r = await api.getAttendance({ date: selectedDate, class_name: selectedClass, status: statusFilter }); 
+      setAttendance(r.data); 
+    } catch (e) { console.error('Fetch attendance error:', e); }
   };
   const fetchSubjectAttendance = async () => {
-    try { const r = await api.getSubjectAttendance({ date: selectedDate, class_name: selectedClass }); setSubjectAttendance(r.data); } catch (e) {}
+    try { 
+      const r = await api.getSubjectAttendance({ date: selectedDate, class_name: selectedClass }); 
+      setSubjectAttendance(r.data); 
+    } catch (e) { console.error('Fetch subject attendance error:', e); }
   };
   const fetchStats = async () => {
-    try { const r = await api.getDashboardStats({ date: selectedDate }); setStats(r.data); } catch (e) {}
+    try { 
+      const r = await api.getDashboardStats({ date: selectedDate }); 
+      setStats(r.data); 
+    } catch (e) { console.error('Fetch stats error:', e); }
   };
   const fetchSchedules = async () => {
-    try { const r = await api.getSchedules({ class_name: selectedClass }); setSchedules(r.data); } catch (e) {}
+    try { 
+      const r = await api.getSchedules({ class_name: selectedClass }); 
+      setSchedules(r.data); 
+    } catch (e) { console.error('Fetch schedules error:', e); }
   };
   const fetchPiket = async () => {
-    try { const r = await api.getGuruPiket(); setPiketList(r.data); } catch (e) {}
+    try { 
+      const r = await api.getGuruPiket(); 
+      setPiketList(r.data); 
+    } catch (e) { console.error('Fetch piket error:', e); }
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault(); setLoginError('');
+    e.preventDefault(); 
+    setLoginError('');
     try {
       const r = await api.login(loginUsername, loginPassword);
+      console.log('Login response:', r.data);
       if (r.data.success) {
-        const u = { name: r.data.name, role: r.data.role, token: r.data.token };
-        setUser(u); localStorage.setItem('school_user', JSON.stringify(u));
+        // IMPORTANT: Store FULL token from response (includes ID|plaintext)
+        const u = { 
+          name: r.data.name, 
+          role: r.data.role, 
+          token: r.data.token  // Full token: "ID|plaintext"
+        };
+        console.log('Storing full user token:', u.token);
+        setUser(u); 
+        localStorage.setItem('school_user', JSON.stringify(u));
+        console.log('Verified stored token:', localStorage.getItem('school_user'));
         notify('success', `Selamat datang, ${r.data.name}!`);
+        setLoginUsername('');
+        setLoginPassword('');
       }
-    } catch (e) { setLoginError(e.response?.data?.message || 'Login gagal.'); }
-  };
-
-  const handleDemoLogin = async (username, password) => {
-    try {
-      const r = await api.login(username, password);
-      if (r.data.success) {
-        const u = { name: r.data.name, role: r.data.role, token: r.data.token };
-        setUser(u); localStorage.setItem('school_user', JSON.stringify(u));
-        notify('success', `Login demo sebagai ${r.data.role.toUpperCase()} berhasil!`);
-      }
-    } catch (e) {
-      setLoginError('Login demo gagal. Pastikan backend berjalan.');
+    } catch (e) { 
+      console.error('Login error:', e);
+      setLoginError(e.response?.data?.message || 'Login gagal.'); 
     }
   };
 
@@ -116,11 +161,17 @@ export default function App() {
   const handleCreateStudent = async (e) => {
     e.preventDefault();
     try {
-      await api.createStudent(newStudent);
-      notify('success', 'Siswa baru + QR unik berhasil ditambahkan!');
-      setShowAddStudent(false); setNewStudent({ nis: '', name: '', class_name: 'X IPA 1', gender: 'L', photo_url: '' });
-      fetchStudents(); fetchStats();
-    } catch (e) { notify('error', e.response?.data?.message || 'Gagal.'); }
+      const r = await api.createStudent(newStudent);
+      notify('success', r.data.message || 'Siswa baru + QR unik berhasil ditambahkan!');
+      setShowAddStudent(false); 
+      setNewStudent({ nis: '', name: '', class_name: 'X IPA 1', gender: 'L', photo_url: '' });
+      setTimeout(() => {
+        fetchStudents(); 
+        fetchStats();
+      }, 500);
+    } catch (e) { 
+      notify('error', e.response?.data?.message || 'Gagal tambahkan siswa.'); 
+    }
   };
 
   const handleDeleteStudent = async (id) => {
@@ -260,29 +311,39 @@ export default function App() {
           )}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">Username</label>
-              <input type="text" data-testid="login-username-input" className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800"
-                placeholder="admin atau guru" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} required />
+              <label className="block text-xs font-semibold uppercase text-slate-600 mb-2">Username</label>
+              <input 
+                type="text" 
+                data-testid="login-username-input" 
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 placeholder-slate-400"
+                placeholder="admin atau guru" 
+                value={loginUsername} 
+                onChange={(e) => setLoginUsername(e.target.value)} 
+                required 
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">Password</label>
-              <input type="password" data-testid="login-password-input" className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800"
-                placeholder="••••••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
+              <label className="block text-xs font-semibold uppercase text-slate-600 mb-2">Password</label>
+              <input 
+                type="password" 
+                data-testid="login-password-input" 
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800 placeholder-slate-400"
+                placeholder="••••••••" 
+                value={loginPassword} 
+                onChange={(e) => setLoginPassword(e.target.value)} 
+                required 
+              />
             </div>
-            <button type="submit" data-testid="login-submit-btn" className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg flex items-center justify-center gap-2">
+            <button 
+              type="submit" 
+              data-testid="login-submit-btn" 
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            >
               Masuk Sistem <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-          <div className="mt-8 pt-6 border-t border-slate-200">
-            <p className="text-xs text-center text-slate-500 mb-3 font-medium uppercase">Demo Login</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => handleDemoLogin('admin', 'admin123')} data-testid="demo-login-admin" className="py-2.5 px-3 bg-slate-100 hover:bg-indigo-50 text-indigo-700 font-medium rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200">
-                <Shield className="w-4 h-4" /> Login Admin
-              </button>
-              <button onClick={() => handleDemoLogin('guru', 'guru123')} data-testid="demo-login-teacher" className="py-2.5 px-3 bg-slate-100 hover:bg-emerald-50 text-emerald-700 font-medium rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200">
-                <Camera className="w-4 h-4" /> Login Guru
-              </button>
-            </div>
+          <div className="mt-6 pt-6 border-t border-slate-200 text-center">
+            <p className="text-xs text-slate-500">© 2026 Sistem Absensi Sekolah v2.0</p>
           </div>
         </div>
       </div>

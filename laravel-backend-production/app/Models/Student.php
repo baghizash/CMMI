@@ -17,7 +17,6 @@ class Student extends Model
         'gender',
         'photo_url',
         'qr_code',
-        'created_at'
     ];
 
     protected $casts = [

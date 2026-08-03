@@ -13,7 +13,7 @@ return new class extends Migration {
             $table->string('name');
             $table->string('class_name');
             $table->string('gender');
-            $table->string('photo_url')->nullable();
+            $table->longText('photo_url')->nullable(); // Support base64 images
             $table->string('qr_code')->unique();
             $table->timestamp('created_at')->nullable();
         });
