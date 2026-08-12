@@ -11,6 +11,10 @@ use App\Http\Controllers\Api\GuruPiketController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExportController;
 
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\TeacherAssignmentController;
+use App\Http\Middleware\CheckRole;
+
 // Public routes - CSRF exempt
 Route::post('/auth/login', [AuthController::class, 'login'])->withoutMiddleware('auth:sanctum');
 
@@ -18,37 +22,77 @@ Route::post('/auth/login', [AuthController::class, 'login'])->withoutMiddleware(
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
-    // Students routes
+    // User management routes (Admin only)
+    Route::middleware(CheckRole::class . ':admin')->group(function () {
+        Route::get('/users', [UserController::class, 'index']);
+        Route::post('/users', [UserController::class, 'store']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
+
+        // Teacher assignments management
+        Route::get('/teacher-assignments', [TeacherAssignmentController::class, 'index']);
+        Route::post('/teacher-assignments', [TeacherAssignmentController::class, 'store']);
+        Route::delete('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'destroy']);
+    });
+
+    // Teacher scope
+    Route::get('/teacher-assignments/my-scope', [TeacherAssignmentController::class, 'myScope']);
+
+    // Students routes — index & store are scoped in controller for guru
     Route::get('/students', [StudentController::class, 'index']);
     Route::post('/students', [StudentController::class, 'store']);
-    Route::put('/students/{id}', [StudentController::class, 'update']);
-    Route::delete('/students/{id}', [StudentController::class, 'destroy']);
-    Route::post('/students/seed-demo', [StudentController::class, 'seedDemo']);
 
-    // Attendance routes
-    Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
-    Route::get('/attendance', [AttendanceController::class, 'index']);
-    Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
-    Route::delete('/attendance/{id}', [AttendanceController::class, 'destroy']);
+    // Student management routes (Admin, Kepsek & Guru Piket only)
+    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
+        Route::post('/students/import', [StudentController::class, 'import']);
+        Route::post('/students/promote-class', [StudentController::class, 'promoteClass']);
+        Route::put('/students/{id}', [StudentController::class, 'update']);
+        Route::delete('/students/{id}', [StudentController::class, 'destroy']);
+        Route::post('/students/seed-demo', [StudentController::class, 'seedDemo']);
+    });
 
-    // Subject Attendance routes
-    Route::post('/subject-attendance/scan', [SubjectAttendanceController::class, 'scan']);
-    Route::get('/subject-attendance', [SubjectAttendanceController::class, 'index']);
+    // Daily Attendance routes — Absen Hadir & Pulang (Admin, Kepsek & Guru Piket only)
+    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
+        Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
+        Route::get('/attendance', [AttendanceController::class, 'index']);
+        Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
+        Route::delete('/attendance/{id}', [AttendanceController::class, 'destroy']);
+    });
 
-    // Schedules routes
-    Route::get('/schedules', [ScheduleController::class, 'index']);
-    Route::post('/schedules', [ScheduleController::class, 'store']);
-    Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
+    // Subject Attendance routes — Absen Mapel (scoped in controller for guru)
+    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket,guru')->group(function () {
+        Route::post('/subject-attendance/scan', [SubjectAttendanceController::class, 'scan']);
+        Route::get('/subject-attendance', [SubjectAttendanceController::class, 'index']);
+    });
 
-    // Guru Piket routes
-    Route::get('/guru-piket', [GuruPiketController::class, 'index']);
-    Route::post('/guru-piket', [GuruPiketController::class, 'store']);
-    Route::delete('/guru-piket/{id}', [GuruPiketController::class, 'destroy']);
+    // Schedules routes (Admin & Kepsek)
+    Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
+        Route::get('/schedules', [ScheduleController::class, 'index']);
+        Route::post('/schedules', [ScheduleController::class, 'store']);
+        Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
+    });
+
+    // Guru Piket routes (Admin & Kepsek)
+    Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
+        Route::get('/guru-piket', [GuruPiketController::class, 'index']);
+        Route::post('/guru-piket', [GuruPiketController::class, 'store']);
+        Route::delete('/guru-piket/{id}', [GuruPiketController::class, 'destroy']);
+    });
 
     // Dashboard routes
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
-    // Export routes
-    Route::get('/export/excel', [ExportController::class, 'excel']);
+    // Export routes (Admin, Kepsek & Guru Piket only)
+    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
+        Route::get('/export/excel', [ExportController::class, 'excel']);
+    });
+
+    // Subject Grades (nilai) routes — scoped in controller for guru
+    Route::get('/grades', [\App\Http\Controllers\Api\SubjectGradeController::class, 'index']);
+    Route::get('/grades/grouped', [\App\Http\Controllers\Api\SubjectGradeController::class, 'grouped']);
+    Route::post('/grades/batch', [\App\Http\Controllers\Api\SubjectGradeController::class, 'batchStore']);
+    Route::get('/grades/student/{id}', [\App\Http\Controllers\Api\SubjectGradeController::class, 'studentGrades']);
+    Route::post('/grades', [\App\Http\Controllers\Api\SubjectGradeController::class, 'store']);
 });

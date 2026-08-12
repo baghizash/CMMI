@@ -22,6 +22,8 @@ class Attendance extends Model
         'time_out',
         'check_out_by',
         'status',
+        'notes',
+        'leave_type',
         'recorded_by',
         'created_at'
     ];

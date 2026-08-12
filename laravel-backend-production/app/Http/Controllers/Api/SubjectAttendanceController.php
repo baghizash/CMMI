@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Models\SubjectAttendance;
+use App\Http\Helpers\TeacherScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -13,6 +14,7 @@ class SubjectAttendanceController extends Controller
     public function scan(Request $request)
     {
         $request->validate([
+            'identifier' => 'sometimes|string',
             'qr_code' => 'sometimes|string',
             'nis' => 'sometimes|string',
             'subject_name' => 'required|string',
@@ -25,7 +27,7 @@ class SubjectAttendanceController extends Controller
         $todayStr = $now->format('Y-m-d');
         $timeStr = $now->format('H:i:s');
 
-        $identifier = $request->qr_code ?? $request->nis;
+        $identifier = $request->identifier ?? $request->qr_code ?? $request->nis;
         if (!$identifier) {
             return response()->json([
                 'success' => false,
@@ -43,6 +45,17 @@ class SubjectAttendanceController extends Controller
                 'success' => false,
                 'message' => "Siswa '{$identifier}' tidak ditemukan."
             ], 404);
+        }
+
+        // Guru mapel: verify access to this student's class + subject
+        $user = $request->user();
+        if ($user && $user->role === 'guru') {
+            if (!TeacherScope::hasAccessToClassSubject($user, $student->class_name, $request->subject_name)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Anda tidak memiliki hak akses untuk mengabsen mapel '{$request->subject_name}' di kelas '{$student->class_name}'."
+                ], 403);
+            }
         }
 
         $existing = SubjectAttendance::where('student_id', $student->id)
@@ -87,7 +100,20 @@ class SubjectAttendanceController extends Controller
 
     public function index(Request $request)
     {
+        $user = $request->user();
         $query = SubjectAttendance::query();
+
+        // Guru mapel: only show records from their assigned classes & subjects
+        if ($user && $user->role === 'guru') {
+            $assignedClasses = TeacherScope::getAssignedClasses($user);
+            $assignedSubjects = TeacherScope::getAssignedSubjects($user);
+            if ($assignedClasses !== null) {
+                $query->whereIn('class_name', $assignedClasses);
+            }
+            if ($assignedSubjects !== null) {
+                $query->whereIn('subject_name', $assignedSubjects);
+            }
+        }
 
         if ($request->has('date')) {
             $query->where('date', $request->date);
@@ -109,3 +135,4 @@ class SubjectAttendanceController extends Controller
         return response()->json($records);
     }
 }
+

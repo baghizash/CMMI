@@ -43,6 +43,8 @@ class AttendanceTest extends TestCase
 
     public function test_can_scan_attendance(): void
     {
+        \Illuminate\Support\Carbon::setTestNow(now()->setTime(7, 0, 0));
+
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
             ->postJson('/api/attendance/scan', [
                 'nis' => '1001',
@@ -73,7 +75,7 @@ class AttendanceTest extends TestCase
 
     public function test_automatic_late_detection(): void
     {
-        $this->freezeTime(now()->setTime(7, 30, 0));
+        \Illuminate\Support\Carbon::setTestNow(now()->setTime(7, 30, 0));
 
         $response = $this->withHeader('Authorization', "Bearer {$this->token}")
             ->postJson('/api/attendance/scan', [

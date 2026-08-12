@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Models\Attendance;
 use App\Models\SubjectAttendance;
+use App\Http\Helpers\TeacherScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -13,7 +14,16 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
         $query = Student::query();
+
+        // Guru mapel: only show students in their assigned classes
+        if ($user && $user->role === 'guru') {
+            $assignedClasses = TeacherScope::getAssignedClasses($user);
+            if ($assignedClasses !== null) {
+                $query->whereIn('class_name', $assignedClasses);
+            }
+        }
 
         if ($request->has('class_name') && $request->class_name !== 'Semua Kelas') {
             $query->where('class_name', $request->class_name);
@@ -35,8 +45,29 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+
+        // Guru mapel: can only add students to their assigned classes
+        if ($user && $user->role === 'guru') {
+            $assignedClasses = TeacherScope::getAssignedClasses($user);
+            if ($assignedClasses !== null && !in_array($request->class_name, $assignedClasses)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Anda tidak memiliki hak akses untuk menambah siswa ke kelas '{$request->class_name}'."
+                ], 403);
+            }
+        }
+
+        $existing = Student::where('nis', $request->nis)->first();
+        if ($existing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'NIS sudah digunakan.'
+            ], 400);
+        }
+
         $request->validate([
-            'nis' => 'required|string|unique:students',
+            'nis' => 'required|string',
             'name' => 'required|string',
             'class_name' => 'required|string',
             'gender' => 'required|string',
@@ -55,6 +86,12 @@ class StudentController extends Controller
             ]);
 
             return response()->json([
+                'id' => $student->id,
+                'nis' => $student->nis,
+                'name' => $student->name,
+                'class_name' => $student->class_name,
+                'gender' => $student->gender,
+                'qr_code' => $student->qr_code,
                 'success' => true,
                 'data' => $student,
                 'message' => 'Siswa berhasil ditambahkan.'
@@ -144,6 +181,64 @@ class StudentController extends Controller
             'success' => true,
             'message' => "Berhasil generate " . count($seeded) . " siswa demo.",
             'count' => count($seeded)
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'students' => 'required|array',
+            'students.*.nis' => 'required|string',
+            'students.*.name' => 'required|string',
+            'students.*.class_name' => 'required|string',
+            'students.*.gender' => 'nullable|string',
+        ]);
+
+        $studentsData = $request->students;
+        $imported = 0;
+        $skipped = 0;
+
+        foreach ($studentsData as $item) {
+            $existing = Student::where('nis', $item['nis'])->first();
+            if ($existing) {
+                $skipped++;
+                continue;
+            }
+
+            Student::create([
+                'id' => (string) Str::uuid(),
+                'nis' => $item['nis'],
+                'name' => $item['name'],
+                'class_name' => $item['class_name'],
+                'gender' => isset($item['gender']) && strtoupper($item['gender']) === 'P' ? 'P' : 'L',
+                'photo_url' => $item['photo_url'] ?? '',
+                'qr_code' => 'SCH-QR-' . strtoupper(Str::random(12)),
+            ]);
+            $imported++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil mengimpor {$imported} siswa. ({$skipped} dilewati karena NIS sudah ada)",
+            'imported_count' => $imported,
+            'skipped_count' => $skipped
+        ]);
+    }
+
+    public function promoteClass(Request $request)
+    {
+        $request->validate([
+            'from_class' => 'required|string',
+            'to_class' => 'required|string',
+        ]);
+
+        $updated = Student::where('class_name', $request->from_class)
+            ->update(['class_name' => $request->to_class]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil memindahkan {$updated} siswa dari kelas '{$request->from_class}' ke '{$request->to_class}'.",
+            'updated_count' => $updated
         ]);
     }
 }

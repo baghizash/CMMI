@@ -46,12 +46,27 @@ export const logout = () =>
 export const getMe = () =>
   apiClient.get('/api/auth/me');
 
+export const changePassword = (data) =>
+  apiClient.post('/api/auth/change-password', data);
+
+// User Management APIs (Admin)
+export const getUsers = () => apiClient.get('/api/users');
+export const createUser = (data) => apiClient.post('/api/users', data);
+export const updateUser = (id, data) => apiClient.put(`/api/users/${id}`, data);
+export const deleteUser = (id) => apiClient.delete(`/api/users/${id}`);
+
 // Students APIs
 export const getStudents = (params) =>
   apiClient.get('/api/students', { params });
 
 export const createStudent = (data) =>
   apiClient.post('/api/students', data);
+
+export const importStudents = (students) =>
+  apiClient.post('/api/students/import', { students });
+
+export const promoteClass = (data) =>
+  apiClient.post('/api/students/promote-class', data);
 
 export const updateStudent = (id, data) =>
   apiClient.put(`/api/students/${id}`, data);
@@ -111,5 +126,18 @@ export const getExcelExport = (params) => {
   const queryString = new URLSearchParams(params).toString();
   return `${BACKEND_URL}/api/export/excel?${queryString}`;
 };
+
+// Teacher Assignments APIs
+export const getTeacherAssignments = () => apiClient.get('/api/teacher-assignments');
+export const createTeacherAssignment = (data) => apiClient.post('/api/teacher-assignments', data);
+export const deleteTeacherAssignment = (id) => apiClient.delete(`/api/teacher-assignments/${id}`);
+export const getMyTeacherScope = () => apiClient.get('/api/teacher-assignments/my-scope');
+
+// Grades APIs
+export const getGrades = (params) => apiClient.get('/api/grades', { params });
+export const getGroupedGrades = (params) => apiClient.get('/api/grades/grouped', { params });
+export const postBatchGrades = (data) => apiClient.post('/api/grades/batch', data);
+export const getStudentGrades = (studentId) => apiClient.get(`/api/grades/student/${studentId}`);
+export const postGrade = (data) => apiClient.post('/api/grades', data);
 
 export default apiClient;

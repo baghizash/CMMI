@@ -150,6 +150,8 @@ class AttendanceController extends Controller
             'student_id' => 'required|string',
             'date' => 'sometimes|date',
             'status' => 'required|string',
+            'notes' => 'nullable|string',
+            'leave_type' => 'nullable|string',
             'recorded_by' => 'sometimes|string',
         ]);
 
@@ -168,6 +170,8 @@ class AttendanceController extends Controller
         if ($existing) {
             $existing->update([
                 'status' => $request->status,
+                'notes' => $request->notes ?? $existing->notes,
+                'leave_type' => $request->leave_type ?? $existing->leave_type,
                 'recorded_by' => $request->recorded_by ?? 'Admin'
             ]);
 
@@ -188,6 +192,8 @@ class AttendanceController extends Controller
             'time' => $timeStr,
             'time_out' => null,
             'status' => $request->status,
+            'notes' => $request->notes ?? null,
+            'leave_type' => $request->leave_type ?? null,
             'recorded_by' => $request->recorded_by ?? 'Admin',
             'created_at' => now()->toIso8601String(),
         ]);

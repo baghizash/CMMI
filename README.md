@@ -1,48 +1,84 @@
-# Here are your Instructions
-untuk aktifkan sistem di lokal komputer
+# CMMI System - Windows Setup
 
-Buka terminal pertama untuk MongoDB</h1>
+## Quick Start
 
-<h1>Kalau MongoDB sudah terinstall sebagai service, jalankan:
-<!-- sudo systemctl start mongod -->
+### First Time Setup (Run Once)
+```
+Double-click: first-time-setup.bat
+```
+This will:
+- Install Composer dependencies (backend)
+- Install npm dependencies (frontend)
+- Migrate database
+- Seed demo data
 
-Kalau belum aktif, cek status
-<!-- sudo systemctl status mongod -->
+### Run Application
+Open **2 separate terminals**:
 
-<h1>Buka terminal kedua untuk backend</h1>
+**Terminal 1 - Backend:**
+```
+Double-click: start-backend.bat
+```
 
-Masuk ke folder backend:
-<!-- cd /home/baghizash/CMMI/CMMI-main/backend-> dikasus saya filenya ada disini -->
+**Terminal 2 - Frontend:**
+```
+Double-click: start-frontend.bat
+```
 
-Buat virtual environment (kalau belum ada):
-<!-- python3 -m venv venv -->
-<!-- source venv/bin/activate -->
+### Access Application
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
 
-Install dependency:
-<!-- pip install -r requirements.txt -->
+### Demo Login
+- Username: **admin**
+- Password: **admin123**
 
-Jalankan backend:!!!!!!!
-<!-- uvicorn server:app --reload --host 0.0.0.0 --port 8000 -->
+---
 
-<h1>Buka terminal ketiga untuk frontend</h1>
+## Project Structure
 
-Masuk ke folder frontend:
-<!-- cd /home/baghizash/CMMI/CMMI-main/frontend -->
+```
+CMMI-main/
+├── laravel-backend-production/   ← Laravel 13 API (PHP)
+├── frontend/                      ← React 19 UI
+├── first-time-setup.bat           ← Initial setup
+├── start-backend.bat              ← Start backend
+├── start-frontend.bat             ← Start frontend
+├── START-HERE.txt                 ← Quick guide
+├── README.md                      ← This file
+├── .env                           ← Root config
+└── .gitignore                     ← Git ignore rules
+```
 
-Install dependency kalau belum:
-<!-- npm install -->
+---
 
-Jalankan Frontend
-<!-- npm start -->
+## System Requirements
 
-Kalau ingin cek backend sudah jalan Buka browser atau curl:
-<!-- http://localhost:8000 -->
+- Windows 10/11
+- Laragon (Apache, PHP 8.3, MySQL)
+- Database: MySQL (cmmi_db)
 
-Kalau ingin cek frontend Biasanya buka:
-<!-- http://localhost:3000 -->
+---
 
-<!-- Catatan penting: -->
+## Troubleshooting
 
-<!-- Backend dan frontend harus dijalankan di terminal berbeda. -->
-<!-- MongoDB juga harus hidup sebelum backend mulai, karena backend butuh koneksi ke database. -->
+**Database not found?**
+- Create database "cmmi_db" in MySQL
+
+**Port already in use?**
+- Edit batch file to use different port
+
+**npm/php not found?**
+- Laragon bins are auto-added to PATH in batch files
+
+---
+
+## Important Files
+
+| File | Purpose |
+|------|---------|
+| `laravel-backend-production/.env` | Backend database config |
+| `frontend/.env` | Frontend API URL |
+| `first-time-setup.bat` | One-time initialization |
+| `START-HERE.txt` | Quick reference |
 
