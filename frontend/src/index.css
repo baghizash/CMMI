@@ -130,7 +130,11 @@ code {
     }
 }
 
-/* Cetak satu kartu siswa: hanya area kartu yang tercetak */
+/* Cetak satu kartu siswa: hanya area kartu yang tercetak, utuh satu halaman */
+@page {
+  size: A4;
+  margin: 0;
+}
 @media print {
   body * {
     visibility: hidden;
@@ -138,12 +142,19 @@ code {
   .cmmi-print-area,
   .cmmi-print-area * {
     visibility: visible;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .cmmi-print-area {
-    position: fixed;
-    top: 0;
+    position: absolute;
+    top: 18mm;
     left: 0;
-    width: 100%;
+    right: 0;
+    margin: 0 auto;
+    width: 640px;
+    max-width: 92%;
     box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
