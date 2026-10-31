@@ -111,7 +111,7 @@ class TeacherAssignmentController extends Controller
 
         $isPiketToday = false;
         if (\Illuminate\Support\Facades\Schema::hasTable('guru_piket')) {
-            $isPiketToday = \App\Models\GuruPiket::where('date', now()->format('Y-m-d'))
+            $isPiketToday = \App\Models\GuruPiket::where('date', now('Asia/Jakarta')->format('Y-m-d'))
                 ->where('teacher_name', $user->name)
                 ->exists();
         }
