@@ -5,6 +5,7 @@ import NotificationToast from './components/NotificationToast';
 import { ConfirmDialogHost } from './components/ConfirmDialog';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import ProfilePage from './pages/ProfilePage';
 import ScannerPage from './pages/ScannerPage';
 import StudentsPage from './pages/StudentsPage';
 import StudentDetailPage from './pages/StudentDetailPage';
@@ -35,6 +36,17 @@ function AppContent() {
     navigate('/dashboard');
   };
 
+  // Profil diperbarui dari halaman Profil: segarkan state + simpanan
+  // lokal agar foto dan nama di header langsung berubah.
+  const handleUserUpdate = (patch) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      localStorage.setItem('school_user', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('school_user');
     setUser(null);
@@ -53,6 +65,10 @@ function AppContent() {
           <Route
             path="/login"
             element={user ? <Navigate to="/dashboard" replace /> : <LoginPage onLoginSuccess={handleLoginSuccess} />}
+          />
+          <Route
+            path="/profile"
+            element={user ? <ProfilePage user={user} notify={notify} onUserUpdate={handleUserUpdate} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/dashboard"
