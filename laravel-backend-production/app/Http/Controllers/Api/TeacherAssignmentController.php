@@ -89,7 +89,8 @@ class TeacherAssignmentController extends Controller
                 'is_admin' => true,
                 'classes' => [],
                 'subjects' => [],
-                'assignments' => []
+                'assignments' => [],
+                'homeroom_classes' => []
             ]);
         }
 
@@ -102,11 +103,17 @@ class TeacherAssignmentController extends Controller
         $classes = $assignments->pluck('class_name')->unique()->values()->toArray();
         $subjects = $assignments->pluck('subject_name')->unique()->values()->toArray();
 
+        $homeroomClasses = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('homeroom_teachers')) {
+            $homeroomClasses = \App\Models\HomeroomTeacher::classesOf($user);
+        }
+
         return response()->json([
             'is_admin' => false,
             'classes' => $classes,
             'subjects' => $subjects,
-            'assignments' => $assignments
+            'assignments' => $assignments,
+            'homeroom_classes' => $homeroomClasses
         ]);
     }
 }
