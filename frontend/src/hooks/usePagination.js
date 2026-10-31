@@ -9,7 +9,6 @@ export default function usePagination(items, perPage = 5, resetDeps = []) {
 
   useEffect(() => {
     setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, resetDeps);
 
   useEffect(() => {
