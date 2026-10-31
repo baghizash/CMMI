@@ -46,6 +46,9 @@ export const logout = () =>
 export const getMe = () =>
   apiClient.get('/api/auth/me');
 
+export const updateProfile = (data) =>
+  apiClient.put('/api/auth/profile', data);
+
 export const changePassword = (data) =>
   apiClient.post('/api/auth/change-password', data);
 
