@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { CalendarRange, ArrowRightCircle, X } from 'lucide-react';
 import * as api from '../services/api';
 import { confirmDialog } from './ConfirmDialog';
+import PiketTodayPanel from './PiketTodayPanel';
 
 // Kartu semester aktif di Dashboard. Untuk admin tampil lengkap dengan
 // kemajuan keputusan naik kelas dan tombol Semester Baru (dua mode:
 // ganti semester saja, atau tutup tahun ajaran yang menjalankan
 // keputusan wali kelas). Peran lain hanya melihat semester aktif.
-export default function SemesterCard({ notify }) {
+export default function SemesterCard({ notify, user }) {
   const [active, setActive] = useState(null);
   const [status, setStatus] = useState(null); // null = bukan admin / tidak bisa diakses
   const [showModal, setShowModal] = useState(false);
@@ -89,7 +90,8 @@ export default function SemesterCard({ notify }) {
 
   return (
     <>
-      <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm grid lg:grid-cols-2 overflow-hidden">
+        <div className="p-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-11 h-11 rounded-2xl bg-plum/10 text-plum flex items-center justify-center shrink-0">
             <CalendarRange className="w-5 h-5" />
@@ -117,6 +119,10 @@ export default function SemesterCard({ notify }) {
             <ArrowRightCircle className="w-4 h-4" /> Semester Baru
           </button>
         )}
+        </div>
+        <div className="p-5 border-t lg:border-t-0 lg:border-l border-slate-100">
+          <PiketTodayPanel user={user} notify={notify} />
+        </div>
       </div>
 
       {showModal && (
