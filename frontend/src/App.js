@@ -56,7 +56,7 @@ function AppContent() {
           />
           <Route
             path="/dashboard"
-            element={user ? <DashboardPage notify={notify} /> : <Navigate to="/login" replace />}
+            element={user ? <DashboardPage notify={notify} user={user} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/scanner"
