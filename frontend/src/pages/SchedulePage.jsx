@@ -109,6 +109,53 @@ export default function SchedulePage({ user, notify }) {
     }
   };
 
+  // Baris tampilan kartu hari: entri berurutan dengan kelas, mapel, dan
+  // guru yang sama (blok ganda seperti PJOK 2 jam) digabung jadi satu
+  // baris. Kolom "Jam ke" tidak ditampilkan; waktu cukup ditulis kecil.
+  const mergeDayRows = (entries) => {
+    const rows = [];
+    entries.forEach((sch) => {
+      const last = rows[rows.length - 1];
+      if (
+        last &&
+        last.class_name === sch.class_name &&
+        last.subject_name === sch.subject_name &&
+        last.teacher_name === sch.teacher_name &&
+        sch.period === last.lastPeriod + 1
+      ) {
+        last.end_time = sch.end_time;
+        last.lastPeriod = sch.period;
+        last.ids.push(sch.id);
+      } else {
+        rows.push({
+          key: sch.id,
+          class_name: sch.class_name,
+          subject_name: sch.subject_name,
+          teacher_name: sch.teacher_name,
+          start_time: sch.start_time,
+          end_time: sch.end_time,
+          lastPeriod: sch.period,
+          ids: [sch.id],
+        });
+      }
+    });
+    return rows;
+  };
+
+  const handleDeleteScheduleGroup = async (row) => {
+    const label = row.ids.length > 1 ? `blok jadwal ${row.subject_name} kelas ${row.class_name} (${row.ids.length} jam)` : 'jadwal pelajaran ini';
+    if (!(await confirmDialog({ message: `Hapus ${label}?`, confirmText: 'Ya, Hapus', danger: true }))) return;
+    try {
+      for (const id of row.ids) {
+        await api.deleteSchedule(id);
+      }
+      notify && notify('success', 'Jadwal dihapus.');
+      fetchData();
+    } catch (e) {
+      notify && notify('error', 'Gagal hapus jadwal.');
+    }
+  };
+
   const handleAddPiket = async (e) => {
     e.preventDefault();
     try {
@@ -211,32 +258,33 @@ export default function SchedulePage({ user, notify }) {
               const daySchedules = visibleSchedules
                 .filter((s) => s.day === day)
                 .sort((x, y) => String(x.class_name).localeCompare(String(y.class_name)) || x.period - y.period);
+              const dayRows = mergeDayRows(daySchedules);
+              const hhmm = (t) => (t ? String(t).substring(0, 5) : '');
               return (
                 <section key={day} aria-label={`Jadwal hari ${day}`} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
                   <header className="px-5 py-4 bg-plum/5 border-b border-slate-100 flex items-center justify-between">
                     <h3 className="font-extrabold text-slate-900 text-sm">{day}</h3>
                     <span className="px-2.5 py-1 bg-plum/10 text-plum rounded-full text-[10px] font-extrabold">
-                      {daySchedules.length} pelajaran
+                      {dayRows.length} pelajaran
                     </span>
                   </header>
-                  {daySchedules.length === 0 ? (
+                  {dayRows.length === 0 ? (
                     <p className="px-5 py-8 text-xs text-slate-400 italic text-center">Belum ada jadwal hari ini.</p>
                   ) : (
                     <ul className="divide-y divide-slate-100">
-                      {daySchedules.map((sch) => (
-                        <li key={sch.id} className="px-5 py-3 flex items-start gap-3 hover:bg-slate-50/80 transition-colors">
-                          <div className="shrink-0 w-14">
-                            <p className="text-[11px] font-extrabold text-indigo-600">Jam {sch.period}</p>
-                            <p className="text-[10px] font-mono text-slate-500">{sch.start_time}–{sch.end_time}</p>
-                          </div>
+                      {dayRows.map((row) => (
+                        <li key={row.key} className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50/80 transition-colors">
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate">{sch.subject_name}</p>
-                            <p className="text-[11px] text-slate-500 truncate">{sch.teacher_name || 'Guru belum diisi'}</p>
+                            <p className="text-xs font-bold text-slate-900 truncate">{row.subject_name}</p>
+                            <p className="text-[11px] text-slate-500 truncate">
+                              {row.teacher_name || 'Guru belum diisi'}
+                              <span className="text-slate-400 font-mono"> · {hhmm(row.start_time)}–{hhmm(row.end_time)}</span>
+                            </p>
                           </div>
-                          <span className="shrink-0 px-2.5 py-1 bg-plum/10 text-plum rounded-xl text-[10px] font-extrabold">{sch.class_name}</span>
+                          <span className="shrink-0 px-2.5 py-1 bg-plum/10 text-plum rounded-xl text-[10px] font-extrabold">{row.class_name}</span>
                           {!isGuru && (
                             <button
-                              onClick={() => handleDeleteSchedule(sch.id)}
+                              onClick={() => handleDeleteScheduleGroup(row)}
                               className="shrink-0 p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
                               title="Hapus Jadwal"
                             >
