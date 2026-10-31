@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Users, Plus, Search, Trash2, Printer, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye
+  Users, Plus, Search, Trash2, Printer, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye, BookOpen
 } from 'lucide-react';
 import * as api from '../services/api';
 import { CLASSES } from '../constants';
 import ImportStudentsModal from '../components/ImportStudentsModal';
 import StudentPrintGrid from '../components/StudentPrintGrid';
 import ClassPromotionModal from '../components/ClassPromotionModal';
-import StudentDetailDrawer from '../components/StudentDetailDrawer';
+import StudentCardModal from '../components/StudentCardModal';
+import StudentGradesModal from '../components/StudentGradesModal';
 
 export default function StudentsPage({ notify }) {
   const [students, setStudents] = useState([]);
@@ -20,7 +21,8 @@ export default function StudentsPage({ notify }) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [showBatchPrint, setShowBatchPrint] = useState(false);
-  const [detailStudent, setDetailStudent] = useState(null);
+  const [cardStudent, setCardStudent] = useState(null);
+  const [gradesStudent, setGradesStudent] = useState(null);
 
   const [newStudent, setNewStudent] = useState({
     nis: '',
@@ -187,7 +189,7 @@ export default function StudentsPage({ notify }) {
                     <td className="px-6 py-4">
                         <button
                           type="button"
-                          onClick={() => setDetailStudent(st)}
+                          onClick={() => setCardStudent(st)}
                           className="font-bold text-slate-900 hover:text-marine-deep underline-offset-2 hover:underline text-left"
                         >
                           {st.name}
@@ -202,10 +204,16 @@ export default function StudentsPage({ notify }) {
                     <td className="px-6 py-4 font-mono text-slate-500 text-[11px]">{st.qr_code}</td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button
-                        onClick={() => setDetailStudent(st)}
+                        onClick={() => setCardStudent(st)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-marine/10 hover:bg-marine/15 text-marine-deep rounded-full font-bold text-[11px] transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" /> Detail
+                      </button>
+                      <button
+                        onClick={() => setGradesStudent(st)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-tang/10 hover:bg-tang/15 text-tang-dark rounded-full font-bold text-[11px] transition-colors"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" /> Nilai
                       </button>
                       <button
                         onClick={() => handleDeleteStudent(st.id, st.name)}
@@ -310,9 +318,14 @@ export default function StudentsPage({ notify }) {
         notify={notify}
       />
 
-      {/* Student Detail Popout (KTP card + grade detail) */}
-      {detailStudent && (
-        <StudentDetailDrawer student={detailStudent} onClose={() => setDetailStudent(null)} />
+      {/* Student card popout: the card only, centred */}
+      {cardStudent && (
+        <StudentCardModal student={cardStudent} onClose={() => setCardStudent(null)} />
+      )}
+
+      {/* Grade detail popout: separate window */}
+      {gradesStudent && (
+        <StudentGradesModal student={gradesStudent} onClose={() => setGradesStudent(null)} />
       )}
 
       {/* Class Promotion Modal */}
