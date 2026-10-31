@@ -90,9 +90,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/subject-attendance', [SubjectAttendanceController::class, 'index']);
     });
 
-    // Schedules routes (Admin & Kepsek)
+    // Schedules routes: membaca boleh semua peran (jadwal guru
+    // ditampilkan terfilter mapel ampuannya di halaman); mengubah
+    // hanya Admin & Kepsek.
+    Route::get('/schedules', [ScheduleController::class, 'index']);
     Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
-        Route::get('/schedules', [ScheduleController::class, 'index']);
         Route::post('/schedules', [ScheduleController::class, 'store']);
         Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
     });
