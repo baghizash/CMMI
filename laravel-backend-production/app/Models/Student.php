@@ -17,6 +17,24 @@ class Student extends Model
         'gender',
         'photo_url',
         'qr_code',
+        // Biodata lengkap (halaman detail siswa)
+        'nisn',
+        'nik',
+        'no_kk',
+        'birth_place',
+        'birth_date',
+        'religion',
+        'address',
+        'child_order',
+        'siblings_count',
+        'father_name',
+        'father_job',
+        'mother_name',
+        'mother_job',
+        'guardian_name',
+        'parent_phone',
+        'previous_school',
+        'enrollment_year',
     ];
 
     protected $casts = [
