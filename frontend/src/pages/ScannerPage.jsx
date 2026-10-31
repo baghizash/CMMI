@@ -136,7 +136,9 @@ export default function ScannerPage({ user, notify }) {
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Pemindai QR Code Absensi</h2>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">Absen Masuk, Pulang, atau Absensi Mata Pelajaran</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">
+            {isGuruMapel ? 'Absensi mata pelajaran untuk kelas yang Anda ampu' : 'Absen Masuk, Pulang, atau Absensi Mata Pelajaran'}
+          </p>
         </div>
 
         <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60">
