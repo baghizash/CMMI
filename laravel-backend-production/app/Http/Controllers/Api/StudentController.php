@@ -190,12 +190,12 @@ class StudentController extends Controller
         Attendance::truncate();
         SubjectAttendance::truncate();
 
-        $classes = ["X IPA 1", "X IPA 2", "XI IPS 1", "XI IPS 2", "XII MIPA"];
+        $classes = ["1A", "1B", "2A", "2B", "3A", "3B"];
         $names = [
-            ["Ahmad Fauzi", "L"], ["Siti Rahma", "P"], ["Budi Santoso", "L"],
-            ["Dewi Lestari", "P"], ["Eko Prasetyo", "L"], ["Rina Melati", "P"],
-            ["Joko Widodo", "L"], ["Sri Mulyani", "P"], ["Andi Pratama", "L"],
-            ["Maya Sari", "P"], ["Doni Kusuma", "L"], ["Siska Amelia", "P"]
+            ["Andi Pratama", "L"], ["Sari Rahmawati", "P"], ["Budi Saputra", "L"],
+            ["Dewi Anggraini", "P"], ["Rafi Ramadhan", "L"], ["Putri Maharani", "P"],
+            ["Bagas Nugraha", "L"], ["Intan Permata", "P"], ["Fajar Hidayat", "L"],
+            ["Ayu Lestari", "P"], ["Raka Setiawan", "L"], ["Nadia Safitri", "P"]
         ];
 
         $seeded = [];
