@@ -7,13 +7,10 @@ import { CLASSES, DAYS, SUBJECTS } from '../constants';
 import TeacherAssignmentsPanel from '../components/TeacherAssignmentsPanel';
 
 export default function SchedulePage({ user, notify }) {
-  const [selectedClass, setSelectedClass] = useState(CLASSES[0]);
-  const [selectedDay, setSelectedDay] = useState('Senin');
 
   const [schedules, setSchedules] = useState([]);
-  const schedulePager = usePagination(schedules, 5, [selectedClass, selectedDay]);
   const [piketList, setPiketList] = useState([]);
-  const piketPager = usePagination(piketList, 5, [selectedDay]);
+  const piketPager = usePagination(piketList, 5, []);
   const [loading, setLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'piket'
@@ -41,7 +38,7 @@ export default function SchedulePage({ user, notify }) {
     setLoading(true);
     try {
       const [schRes, piketRes] = await Promise.all([
-        api.getSchedules({ class_name: selectedClass, day: selectedDay }),
+        api.getSchedules({}),
         api.getGuruPiket({ date: new Date().toISOString().split('T')[0] }),
       ]);
       setSchedules(schRes.data || []);
@@ -56,7 +53,7 @@ export default function SchedulePage({ user, notify }) {
 
   useEffect(() => {
     fetchData();
-  }, [selectedClass, selectedDay]);
+  }, []);
 
   const handleAddSchedule = async (e) => {
     e.preventDefault();
@@ -146,95 +143,65 @@ export default function SchedulePage({ user, notify }) {
         </div>
       </div>
 
-      {/* Filter Row (tab Jadwal) */}
-      {activeTab === 'jadwal' && (
-      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500">Kelas:</span>
-          <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none"
-          >
-            {CLASSES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500">Hari:</span>
-          <select
-            value={selectedDay}
-            onChange={(e) => setSelectedDay(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none"
-          >
-            {DAYS.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-        </div>
-        <button
-          onClick={() => setShowAddScheduleModal(true)}
-          className="ml-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" /> Tambah Jadwal
-        </button>
-      </div>
-      )}
-
       {/* Tab panels */}
       {activeTab === 'jadwal' && (
-        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-900 text-sm">
-              Jadwal Kelas {selectedClass} - Hari {selectedDay}
-            </h3>
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-slate-500">
+              {DAYS.length} hari efektif · {schedules.length} jadwal pelajaran dari semua kelas
+            </p>
+            <button
+              onClick={() => setShowAddScheduleModal(true)}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Tambah Jadwal
+            </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3.5">Jam Ke-</th>
-                  <th className="px-6 py-3.5">Waktu</th>
-                  <th className="px-6 py-3.5">Mata Pelajaran</th>
-                  <th className="px-6 py-3.5">Guru Pengajar</th>
-                  <th className="px-6 py-3.5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {schedules.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-12 text-slate-400">
-                      Belum ada jadwal tersimpan untuk kelas & hari ini.
-                    </td>
-                  </tr>
-                ) : (
-                  schedulePager.pageItems.map((sch) => (
-                    <tr key={sch.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 font-bold text-indigo-600">Ke-{sch.period}</td>
-                      <td className="px-6 py-4 font-mono">{sch.start_time} - {sch.end_time}</td>
-                      <td className="px-6 py-4 font-bold text-slate-900">{sch.subject_name}</td>
-                      <td className="px-6 py-4">{sch.teacher_name || '-'}</td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleDeleteSchedule(sch.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          {schedules.length > 0 && (
-            <PaginationBar page={schedulePager.page} totalPages={schedulePager.totalPages} total={schedulePager.total} perPage={schedulePager.perPage} onPageChange={schedulePager.setPage} />
-          )}
-        </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {DAYS.map((day) => {
+              const daySchedules = schedules
+                .filter((s) => s.day === day)
+                .sort((x, y) => String(x.class_name).localeCompare(String(y.class_name)) || x.period - y.period);
+              return (
+                <section key={day} aria-label={`Jadwal hari ${day}`} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+                  <header className="px-5 py-4 bg-plum/5 border-b border-slate-100 flex items-center justify-between">
+                    <h3 className="font-extrabold text-slate-900 text-sm">{day}</h3>
+                    <span className="px-2.5 py-1 bg-plum/10 text-plum rounded-full text-[10px] font-extrabold">
+                      {daySchedules.length} pelajaran
+                    </span>
+                  </header>
+                  {daySchedules.length === 0 ? (
+                    <p className="px-5 py-8 text-xs text-slate-400 italic text-center">Belum ada jadwal di hari ini.</p>
+                  ) : (
+                    <ul className="divide-y divide-slate-100">
+                      {daySchedules.map((sch) => (
+                        <li key={sch.id} className="px-5 py-3 flex items-start gap-3 hover:bg-slate-50/80 transition-colors">
+                          <div className="shrink-0 w-14">
+                            <p className="text-[11px] font-extrabold text-indigo-600">Jam {sch.period}</p>
+                            <p className="text-[10px] font-mono text-slate-500">{sch.start_time}–{sch.end_time}</p>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-slate-900 truncate">{sch.subject_name}</p>
+                            <p className="text-[11px] text-slate-500 truncate">{sch.teacher_name || 'Guru belum diisi'}</p>
+                          </div>
+                          <span className="shrink-0 px-2.5 py-1 bg-plum/10 text-plum rounded-xl text-[10px] font-extrabold">{sch.class_name}</span>
+                          <button
+                            onClick={() => handleDeleteSchedule(sch.id)}
+                            className="shrink-0 p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
+                            title="Hapus Jadwal"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {activeTab === 'piket' && (
