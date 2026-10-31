@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserCheck, Plus, Trash2 } from 'lucide-react';
 import * as api from '../services/api';
+import { confirmDialog } from './ConfirmDialog';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 import { CLASSES, SUBJECTS } from '../constants';
@@ -58,7 +59,7 @@ export default function TeacherAssignmentsPanel({ notify }) {
   };
 
   const handleDeleteAssignment = async (id) => {
-    if (!window.confirm('Hapus penugasan guru ini?')) return;
+    if (!(await confirmDialog({ message: 'Hapus penugasan guru ini?', confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteTeacherAssignment(id);
       notify && notify('success', 'Penugasan berhasil dihapus.');
