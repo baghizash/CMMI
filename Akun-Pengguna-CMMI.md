@@ -4,7 +4,7 @@ Diperbarui: 1 November 2026 (setelah sistem dialihkan ke SD dan seeder guru dija
 
 Catatan penting:
 
-- File ini **tidak** disimpan di GitHub. Simpan di tempat aman.
+- File ini tersimpan di repo GitHub privat CMMI (branch fitur/halaman-detail-siswa) atas permintaan Baghiz. Jaga kerahasiaannya.
 - Akun guru di bawah dibuat oleh `GuruUsersSeeder`. Jalankan seeder-nya dulu supaya akunnya benar-benar ada di database.
 - Semua akun guru memakai password awal yang sama. Minta setiap guru mengganti password-nya setelah login pertama lewat menu ganti kata sandi.
 - Akun yang dibuat manual lewat menu Manajemen User tidak tercatat di file ini.
