@@ -1,40 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Trash2, UserCog, BookOpen, ChevronDown } from 'lucide-react';
+import { Calendar, Plus, Trash2, BookOpen, ChevronDown } from 'lucide-react';
 import * as api from '../services/api';
 import { confirmDialog } from '../components/ConfirmDialog';
-import PaginationBar from '../components/PaginationBar';
-import usePagination from '../hooks/usePagination';
 import { CLASSES, DAYS, SUBJECTS } from '../constants';
 import TeacherAssignmentsPanel from '../components/TeacherAssignmentsPanel';
 import HomeroomAssignmentsPanel from '../components/HomeroomAssignmentsPanel';
 
-// Tanggal hari ini menurut jam lokal perangkat (WIB), bukan UTC:
-// fungsi bawaan JS untuk tanggal ISO memakai UTC sehingga pada dini
-// hari WIB tanggalnya masih kemarin — itu yang membuat piket yang
-// tersimpan untuk hari ini tidak tampil di daftar hari ini.
-const localToday = () => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-
 export default function SchedulePage({ user, notify }) {
 
   const [schedules, setSchedules] = useState([]);
-  const [piketList, setPiketList] = useState([]);
-  const piketPager = usePagination(piketList, 5, []);
   const [loading, setLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'wali' | 'piket'
+  const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'wali'
   const [openClassKeys, setOpenClassKeys] = useState({});
   const toggleClassGroup = (key) => setOpenClassKeys((prev) => ({ ...prev, [key]: !prev[key] }));
   const isGuru = user?.role === 'guru';
   const [teacherSubjects, setTeacherSubjects] = useState([]);
   const [teacherUsers, setTeacherUsers] = useState([]);
   const [showTeacherSuggest, setShowTeacherSuggest] = useState(false);
-  const [showPiketSuggest, setShowPiketSuggest] = useState(false);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
-  const [showAddPiketModal, setShowAddPiketModal] = useState(false);
 
   const [newSchedule, setNewSchedule] = useState({
     day: 'Senin',
@@ -47,23 +31,16 @@ export default function SchedulePage({ user, notify }) {
     room: '',
   });
 
-  const [newPiket, setNewPiket] = useState({
-    date: localToday(),
-    teacher_name: '',
-  });
+
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [schRes, piketRes] = await Promise.all([
-        api.getSchedules({}),
-        api.getGuruPiket({ date: localToday() }),
-      ]);
+      const schRes = await api.getSchedules({});
       setSchedules(schRes.data || []);
-      setPiketList(piketRes.data || []);
     } catch (e) {
       console.error('Failed fetching schedule data', e);
-      notify && notify('error', 'Gagal memuat jadwal & guru piket.');
+      notify && notify('error', 'Gagal memuat jadwal.');
     } finally {
       setLoading(false);
     }
@@ -169,29 +146,6 @@ export default function SchedulePage({ user, notify }) {
     }
   };
 
-  const handleAddPiket = async (e) => {
-    e.preventDefault();
-    try {
-      await api.createGuruPiket({ date: newPiket.date, teacher_name: newPiket.teacher_name });
-      notify && notify('success', `Guru Piket ${newPiket.teacher_name} untuk tanggal ${newPiket.date} ditambahkan.`);
-      setShowAddPiketModal(false);
-      fetchData();
-    } catch (err) {
-      notify && notify('error', err.response?.data?.message || 'Gagal tambah guru piket.');
-    }
-  };
-
-  const handleDeletePiket = async (id) => {
-    if (!(await confirmDialog({ message: 'Hapus guru piket ini?', confirmText: 'Ya, Hapus', danger: true }))) return;
-    try {
-      await api.deleteGuruPiket(id);
-      notify && notify('success', 'Guru piket dihapus.');
-      fetchData();
-    } catch (e) {
-      notify && notify('error', 'Gagal hapus guru piket.');
-    }
-  };
-
   const visibleSchedules = isGuru
     ? schedules.filter((s) => teacherSubjects.includes(s.subject_name))
     : schedules;
@@ -202,7 +156,7 @@ export default function SchedulePage({ user, notify }) {
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Jadwal & Penugasan</h2>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">Jadwal pelajaran, penugasan guru mapel, dan guru piket dalam satu halaman</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Jadwal pelajaran dan penugasan guru dalam satu halaman</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60" role="tablist" aria-label="Pilih fitur">
@@ -237,15 +191,6 @@ export default function SchedulePage({ user, notify }) {
               Penugasan Wali Kelas
             </button>
           )}
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'piket'}
-            onClick={() => setActiveTab('piket')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'piket' ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20' : 'text-slate-600 hover:bg-slate-200/50'}`}
-          >
-            Guru Piket
-          </button>
         </div>
       </div>
 
@@ -366,49 +311,6 @@ export default function SchedulePage({ user, notify }) {
               );
             })}
           </div>
-        </div>
-      )}
-
-      {activeTab === 'piket' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-              <UserCog className="w-4 h-4 text-amber-600" /> Guru Piket Hari Ini
-            </h3>
-            {!isGuru && (
-              <button
-                onClick={() => setShowAddPiketModal(true)}
-                className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
-              >
-                <UserCog className="w-4 h-4" /> Set Guru Piket
-              </button>
-            )}
-          </div>
-          {piketList.length === 0 ? (
-            <p className="text-xs text-slate-400 italic py-4 text-center">Belum ada guru piket terdaftar hari ini.</p>
-          ) : (
-            <div className="space-y-2">
-              {piketPager.pageItems.map((p) => (
-                <div key={p.id} className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">{p.teacher_name}</p>
-                    <p className="text-[10px] text-slate-500">{p.notes || 'Petugas Piket'}</p>
-                  </div>
-                  {!isGuru && (
-                    <button
-                      onClick={() => handleDeletePiket(p.id)}
-                      className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {piketList.length > 0 && (
-            <PaginationBar page={piketPager.page} totalPages={piketPager.totalPages} total={piketPager.total} perPage={piketPager.perPage} onPageChange={piketPager.setPage} />
-          )}
         </div>
       )}
 
@@ -552,82 +454,6 @@ export default function SchedulePage({ user, notify }) {
         </div>
       )}
 
-      {/* Add Piket Modal */}
-      {showAddPiketModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-backdrop-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-pop-in">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Set Guru Piket</h3>
-            <form onSubmit={handleAddPiket} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
-                <input
-                  type="date"
-                  value={newPiket.date}
-                  onChange={(e) => setNewPiket({ ...newPiket, date: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-2xl text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nama Guru Piket</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={newPiket.teacher_name}
-                    onChange={(e) => {
-                      setNewPiket({ ...newPiket, teacher_name: e.target.value });
-                      setShowPiketSuggest(true);
-                    }}
-                    onFocus={() => setShowPiketSuggest(true)}
-                    onBlur={() => setTimeout(() => setShowPiketSuggest(false), 150)}
-                    placeholder="Ketik nama guru..."
-                    autoComplete="off"
-                    role="combobox"
-                    aria-expanded={showPiketSuggest}
-                    aria-label="Nama Guru Piket"
-                    className="w-full px-3 py-2 border rounded-2xl text-xs"
-                  />
-                  {showPiketSuggest &&
-                    (() => {
-                      const q = newPiket.teacher_name.trim().toLowerCase();
-                      const matches = teacherUsers
-                        .filter((u) => q === '' || String(u.name).toLowerCase().startsWith(q))
-                        .slice(0, 8);
-                      if (matches.length === 0) return null;
-                      return (
-                        <ul className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-auto bg-white border border-slate-200 rounded-2xl shadow-lg py-1" role="listbox">
-                          {matches.map((u) => (
-                            <li key={u.id}>
-                              <button
-                                type="button"
-                                role="option"
-                                aria-selected="false"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setNewPiket({ ...newPiket, teacher_name: u.name });
-                                  setShowPiketSuggest(false);
-                                }}
-                                className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-amber-50 flex items-center justify-between gap-2"
-                              >
-                                <span>{u.name}</span>
-                                <span className="text-[10px] font-bold text-slate-400">Guru</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      );
-                    })()}
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1">Pilih dari daftar agar namanya persis sama dengan akun guru: nama itulah yang membuka akses absen masuk/pulang pada hari piketnya.</p>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setShowAddPiketModal(false)} className="px-4 py-2 text-xs font-semibold">Batal</button>
-                <button type="submit" className="px-5 py-2.5 bg-amber-600 text-white font-bold text-xs rounded-2xl shadow-md">Simpan</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
