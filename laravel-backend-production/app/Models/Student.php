@@ -14,6 +14,7 @@ class Student extends Model
         'nis',
         'name',
         'class_name',
+        'status',
         'gender',
         'photo_url',
         'qr_code',
