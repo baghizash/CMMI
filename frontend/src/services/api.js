@@ -140,4 +140,22 @@ export const postBatchGrades = (data) => apiClient.post('/api/grades/batch', dat
 export const getStudentGrades = (studentId) => apiClient.get(`/api/grades/student/${studentId}`);
 export const postGrade = (data) => apiClient.post('/api/grades', data);
 
+// Semesters APIs
+export const getSemesters = () => apiClient.get('/api/semesters');
+export const getActiveSemester = () => apiClient.get('/api/semesters/active');
+export const rolloverSemester = (data) => apiClient.post('/api/semesters/rollover', data);
+
+// Homeroom (Wali Kelas) APIs
+export const getHomeroomTeachers = () => apiClient.get('/api/homeroom-teachers');
+export const assignHomeroomTeacher = (data) => apiClient.post('/api/homeroom-teachers', data);
+export const deleteHomeroomTeacher = (id) => apiClient.delete(`/api/homeroom-teachers/${id}`);
+
+// Promotion (Keputusan Naik Kelas) APIs
+export const getPromotionClasses = () => apiClient.get('/api/promotions/my-classes');
+export const decidePromotion = (data) => apiClient.post('/api/promotions/decide', data);
+export const getPromotionStatus = () => apiClient.get('/api/promotions/status');
+
+// Transcript API
+export const getStudentTranscript = (studentId) => apiClient.get(`/api/students/${studentId}/transcript`);
+
 export default apiClient;
