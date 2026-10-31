@@ -25,6 +25,12 @@ class StudentController extends Controller
             }
         }
 
+        // Status siswa: bawaan hanya yang aktif; alumni/semua lewat parameter
+        $status = $request->input('status', 'aktif');
+        if ($status === 'aktif' || $status === 'alumni') {
+            $query->where('status', $status);
+        }
+
         if ($request->has('class_name') && $request->class_name !== 'Semua Kelas') {
             $query->where('class_name', $request->class_name);
         }
@@ -233,6 +239,7 @@ class StudentController extends Controller
         ]);
 
         $updated = Student::where('class_name', $request->from_class)
+            ->where('status', 'aktif')
             ->update(['class_name' => $request->to_class]);
 
         return response()->json([
