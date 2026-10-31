@@ -19,11 +19,10 @@ export default function Navbar({ user, onLogout, notify }) {
       ? []
       : [{ label: 'Nilai Siswa', path: '/grades', icon: <BookOpen className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> }]),
     { label: 'Rekap Absensi', path: '/recap', icon: <Clock className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
-    { label: 'Jadwal & Piket', path: '/schedule', icon: <Calendar className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
+    { label: 'Jadwal & Penugasan', path: '/schedule', icon: <Calendar className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
   ];
 
   if (user?.role === 'admin') {
-    navItems.push({ label: 'Penugasan Guru', path: '/penugasan-guru', icon: <UserCheck className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> });
     navItems.push({ label: 'Manajemen User', path: '/users', icon: <UserCog className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> });
   }
 
