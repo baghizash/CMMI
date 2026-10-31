@@ -5,6 +5,13 @@ import {
 } from 'lucide-react';
 import * as api from '../services/api';
 import { CLASSES } from '../constants';
+
+// Kolom biodata lengkap dari migrasi halaman detail; dipakai untuk lencana status kelengkapan.
+const BIODATA_FIELDS = [
+  'nisn', 'nik', 'no_kk', 'birth_place', 'birth_date', 'religion', 'address',
+  'child_order', 'siblings_count', 'father_name', 'father_job', 'mother_name',
+  'mother_job', 'guardian_name', 'parent_phone', 'previous_school', 'enrollment_year',
+];
 import ImportStudentsModal from '../components/ImportStudentsModal';
 import StudentPrintGrid from '../components/StudentPrintGrid';
 import ClassPromotionModal from '../components/ClassPromotionModal';
@@ -172,16 +179,17 @@ export default function StudentsPage({ notify }) {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">NIS</th>
-                <th className="px-6 py-4">Nama Siswa</th>
-                <th className="px-6 py-4">Kelas</th>
+                <th className="px-6 py-4 w-[12%]">NIS</th>
+                <th className="px-6 py-4 w-[32%]">Nama Siswa</th>
+                <th className="px-6 py-4 w-[16%]">Kelas</th>
+                <th className="px-6 py-4 w-[18%]">Biodata</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-12 text-slate-400 font-medium">
+                  <td colSpan={5} className="text-center py-12 text-slate-400 font-medium">
                     {loading ? 'Memuat data siswa...' : 'Tidak ada data siswa ditemukan.'}
                   </td>
                 </tr>
@@ -202,6 +210,29 @@ export default function StudentsPage({ notify }) {
                       <span className="px-2.5 py-1 bg-slate-100 rounded-xl font-bold text-slate-700">
                         {st.class_name}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const filled = BIODATA_FIELDS.filter((f) => st[f] !== null && st[f] !== undefined && st[f] !== '').length;
+                        const total = BIODATA_FIELDS.length;
+                        const badge =
+                          filled === total
+                            ? 'bg-hadir/10 text-hadir'
+                            : filled === 0
+                              ? 'bg-slate-100 text-slate-500'
+                              : 'bg-butter/30 text-telat';
+                        const label = filled === total ? 'Lengkap' : filled === 0 ? 'Belum diisi' : `${filled}/${total} terisi`;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/students/${st.id}`)}
+                            title="Buka halaman detail untuk melengkapi biodata"
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold transition hover:brightness-95 ${badge}`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button
