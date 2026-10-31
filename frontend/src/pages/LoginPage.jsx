@@ -25,6 +25,7 @@ export default function LoginPage({ onLoginSuccess }) {
           token: response.data.token,
           role: response.data.role,
           name: response.data.name,
+          photo: response.data.photo || null,
           username: username,
         };
         localStorage.setItem('school_user', JSON.stringify(userData));
