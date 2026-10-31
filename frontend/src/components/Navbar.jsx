@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  QrCode, LogOut, GraduationCap, Clock, Calendar, KeyRound, UserCog, LayoutDashboard, BookOpen
+  QrCode, LogOut, GraduationCap, Clock, Calendar, KeyRound, UserCog, LayoutDashboard, BookOpen, UserCheck
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 
@@ -15,12 +15,15 @@ export default function Navbar({ user, onLogout, notify }) {
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
     { label: 'Absen QR', path: '/scanner', icon: <QrCode className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
     { label: 'Data Siswa', path: '/students', icon: <GraduationCap className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
-    { label: 'Nilai Siswa', path: '/grades', icon: <BookOpen className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
+    ...(user?.role === 'admin'
+      ? []
+      : [{ label: 'Nilai Siswa', path: '/grades', icon: <BookOpen className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> }]),
     { label: 'Rekap Absensi', path: '/recap', icon: <Clock className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
     { label: 'Jadwal & Piket', path: '/schedule', icon: <Calendar className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
   ];
 
   if (user?.role === 'admin') {
+    navItems.push({ label: 'Penugasan Guru', path: '/penugasan-guru', icon: <UserCheck className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> });
     navItems.push({ label: 'Manajemen User', path: '/users', icon: <UserCog className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> });
   }
 
