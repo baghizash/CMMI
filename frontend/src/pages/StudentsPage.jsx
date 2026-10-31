@@ -25,13 +25,14 @@ export default function StudentsPage({ notify }) {
   const [loading, setLoading] = useState(false);
 
   const [selectedClass, setSelectedClass] = useState('Semua Kelas');
+  const [selectedStatus, setSelectedStatus] = useState('aktif');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [cardStudent, setCardStudent] = useState(null);
-  const studentPager = usePagination(students, 5, [selectedClass, searchQuery]);
+  const studentPager = usePagination(students, 5, [selectedClass, searchQuery, selectedStatus]);
 
   const [newStudent, setNewStudent] = useState({
     nis: '',
@@ -44,7 +45,7 @@ export default function StudentsPage({ notify }) {
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const res = await api.getStudents({ class_name: selectedClass, search: searchQuery });
+      const res = await api.getStudents({ class_name: selectedClass, search: searchQuery, status: selectedStatus });
       setStudents(res.data || []);
     } catch (e) {
       console.error('Failed fetching students', e);
@@ -56,7 +57,7 @@ export default function StudentsPage({ notify }) {
 
   useEffect(() => {
     fetchStudents();
-  }, [selectedClass, searchQuery]);
+  }, [selectedClass, searchQuery, selectedStatus]);
 
   const handleAddStudent = async (e) => {
     e.preventDefault();
@@ -140,6 +141,19 @@ export default function StudentsPage({ notify }) {
             {CLASSES.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Status:</span>
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <option value="aktif">Aktif</option>
+            <option value="alumni">Alumni</option>
+            <option value="semua">Semua</option>
           </select>
         </div>
       </div>
