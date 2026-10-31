@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, RefreshCw } from 'lucide-react';
 import * as api from '../services/api';
 
@@ -47,7 +47,7 @@ export default function StudentGradesModal({ student, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const fetchGrades = async () => {
+  const fetchGrades = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
@@ -61,12 +61,11 @@ export default function StudentGradesModal({ student, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [student.id]);
 
   useEffect(() => {
     fetchGrades();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [student.id]);
+  }, [fetchGrades]);
 
   const grouped = useMemo(() => {
     const map = new Map();
