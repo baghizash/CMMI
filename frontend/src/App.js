@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import ScannerPage from './pages/ScannerPage';
 import StudentsPage from './pages/StudentsPage';
 import StudentDetailPage from './pages/StudentDetailPage';
+import StudentTranscriptPage from './pages/StudentTranscriptPage';
 import RecapPage from './pages/RecapPage';
 import SchedulePage from './pages/SchedulePage';
 import UsersPage from './pages/UsersPage';
@@ -66,6 +67,10 @@ function AppContent() {
           <Route
             path="/students/:id"
             element={user ? <StudentDetailPage user={user} notify={notify} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/students/:id/nilai"
+            element={user ? <StudentTranscriptPage notify={notify} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/grades"
