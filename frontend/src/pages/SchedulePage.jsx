@@ -14,6 +14,8 @@ export default function SchedulePage({ user, notify }) {
   const [loading, setLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'piket'
+  const isGuru = user?.role === 'guru';
+  const [teacherSubjects, setTeacherSubjects] = useState([]);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [showAddPiketModal, setShowAddPiketModal] = useState(false);
 
@@ -54,6 +56,16 @@ export default function SchedulePage({ user, notify }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Guru hanya melihat jadwal mata pelajaran yang ia ampu
+  useEffect(() => {
+    if (isGuru) {
+      api
+        .getMyTeacherScope()
+        .then((res) => setTeacherSubjects(res.data?.subjects || []))
+        .catch((err) => console.error('Failed fetching teacher scope', err));
+    }
+  }, [user]);
 
   const handleAddSchedule = async (e) => {
     e.preventDefault();
@@ -100,6 +112,8 @@ export default function SchedulePage({ user, notify }) {
       notify && notify('error', 'Gagal hapus guru piket.');
     }
   };
+
+  const visibleSchedules = isGuru ? schedules.filter((s) => teacherSubjects.includes(s.subject_name)) : schedules;
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
@@ -148,19 +162,23 @@ export default function SchedulePage({ user, notify }) {
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs font-semibold text-slate-500">
-              {DAYS.length} hari efektif · {schedules.length} jadwal pelajaran dari semua kelas
+              {isGuru
+                ? `${DAYS.length} hari efektif · ${visibleSchedules.length} jadwal mata pelajaran Anda`
+                : `${DAYS.length} hari efektif · ${schedules.length} jadwal pelajaran dari semua kelas`}
             </p>
-            <button
-              onClick={() => setShowAddScheduleModal(true)}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" /> Tambah Jadwal
-            </button>
+            {!isGuru && (
+              <button
+                onClick={() => setShowAddScheduleModal(true)}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Tambah Jadwal
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {DAYS.map((day) => {
-              const daySchedules = schedules
+              const daySchedules = visibleSchedules
                 .filter((s) => s.day === day)
                 .sort((x, y) => String(x.class_name).localeCompare(String(y.class_name)) || x.period - y.period);
               return (
@@ -172,7 +190,7 @@ export default function SchedulePage({ user, notify }) {
                     </span>
                   </header>
                   {daySchedules.length === 0 ? (
-                    <p className="px-5 py-8 text-xs text-slate-400 italic text-center">Belum ada jadwal di hari ini.</p>
+                    <p className="px-5 py-8 text-xs text-slate-400 italic text-center">Belum ada jadwal hari ini.</p>
                   ) : (
                     <ul className="divide-y divide-slate-100">
                       {daySchedules.map((sch) => (
@@ -186,13 +204,15 @@ export default function SchedulePage({ user, notify }) {
                             <p className="text-[11px] text-slate-500 truncate">{sch.teacher_name || 'Guru belum diisi'}</p>
                           </div>
                           <span className="shrink-0 px-2.5 py-1 bg-plum/10 text-plum rounded-xl text-[10px] font-extrabold">{sch.class_name}</span>
-                          <button
-                            onClick={() => handleDeleteSchedule(sch.id)}
-                            className="shrink-0 p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
-                            title="Hapus Jadwal"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {!isGuru && (
+                            <button
+                              onClick={() => handleDeleteSchedule(sch.id)}
+                              className="shrink-0 p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
+                              title="Hapus Jadwal"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </li>
                       ))}
                     </ul>
