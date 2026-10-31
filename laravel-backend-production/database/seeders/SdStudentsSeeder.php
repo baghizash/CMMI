@@ -28,7 +28,7 @@ class SdStudentsSeeder extends Seeder
         $cities = ['Jakarta', 'Bogor', 'Depok', 'Tangerang', 'Bekasi', 'Bandung', 'Semarang', 'Yogyakarta', 'Surabaya', 'Malang', 'Solo', 'Cirebon'];
         $streets = ['Jl. Merdeka', 'Jl. Sudirman', 'Jl. Kenanga', 'Jl. Melati', 'Jl. Anggrek', 'Jl. Cendana', 'Jl. Flamboyan', 'Jl. Mawar', 'Jl. Dahlia', 'Jl. Teratai'];
         $fatherNames = ['Agus', 'Bambang', 'Cecep', 'Dedi', 'Edi', 'Fuad', 'Gunawan', 'Herman', 'Iwan', 'Jajang', 'Koko', 'Lili', 'Maman', 'Nanang', 'Oman', 'Pepen', 'Rudi', 'Slamet', 'Tatang', 'Udin'];
-        $motherNames = ['Aminah', 'Beti', 'Cucu', 'Dedeh', 'EuIs', 'Fitriah', 'Gina', 'Hj. Neneng', 'Iis', 'Juju', 'Kokom', 'Lilis', 'Mamah', 'Nani', 'Ocih', 'Popon', 'Rina', 'Siti', 'Tuti', 'Umi'];
+        $motherNames = ['Aminah', 'Beti', 'Cucu', 'Dedeh', 'Euis', 'Fitriah', 'Gina', 'Hj. Neneng', 'Iis', 'Juju', 'Kokom', 'Lilis', 'Mamah', 'Nani', 'Ocih', 'Popon', 'Rina', 'Siti', 'Tuti', 'Umi'];
 
         $nis = 3001;
         foreach ($classes as $ci => $className) {
