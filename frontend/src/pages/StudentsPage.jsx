@@ -83,17 +83,6 @@ export default function StudentsPage({ notify }) {
     }
   };
 
-  const handleSeedDemo = async () => {
-    if (!window.confirm('Reset dan generate 12 data siswa demo? Data absensi lama akan dikosongkan.')) return;
-    try {
-      await api.seedDemo();
-      notify && notify('success', 'Berhasil generate data siswa demo.');
-      fetchStudents();
-    } catch (e) {
-      notify && notify('error', 'Gagal seed data demo.');
-    }
-  };
-
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       {/* Header & Action Bar */}
@@ -133,13 +122,6 @@ export default function StudentsPage({ notify }) {
             <Plus className="w-4 h-4" /> Tambah Siswa
           </button>
 
-          <button
-            onClick={handleSeedDemo}
-            className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-2xl transition-colors"
-            title="Generate Data Demo"
-          >
-            Seed Demo
-          </button>
         </div>
       </div>
 
