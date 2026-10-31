@@ -15,7 +15,7 @@ export default function Navbar({ user, onLogout, notify }) {
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
     { label: 'Absen QR', path: '/scanner', icon: <QrCode className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
     { label: 'Data Siswa', path: '/students', icon: <GraduationCap className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
-    ...(user?.role === 'admin'
+    ...(user?.role === 'admin' || user?.role === 'guru'
       ? []
       : [{ label: 'Nilai Siswa', path: '/grades', icon: <BookOpen className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> }]),
     { label: 'Rekap Absensi', path: '/recap', icon: <Clock className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-rotate-6" /> },
