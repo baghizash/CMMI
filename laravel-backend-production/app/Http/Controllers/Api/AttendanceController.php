@@ -104,6 +104,7 @@ class AttendanceController extends Controller
             'student_name' => $student->name,
             'class_name' => $student->class_name,
             'date' => $todayStr,
+            'semester_id' => \App\Models\Semester::activeId(),
             'time' => $timeStr,
             'time_out' => null,
             'status' => $status,
@@ -169,6 +170,7 @@ class AttendanceController extends Controller
 
         if ($existing) {
             $existing->update([
+                'semester_id' => $existing->semester_id ?: \App\Models\Semester::activeId(),
                 'status' => $request->status,
                 'notes' => $request->notes ?? $existing->notes,
                 'leave_type' => $request->leave_type ?? $existing->leave_type,
@@ -189,6 +191,7 @@ class AttendanceController extends Controller
             'student_name' => $student->name,
             'class_name' => $student->class_name,
             'date' => $todayStr,
+            'semester_id' => \App\Models\Semester::activeId(),
             'time' => $timeStr,
             'time_out' => null,
             'status' => $request->status,
