@@ -86,7 +86,18 @@ class GuruUsersSeeder extends Seeder
         };
 
         foreach ($homeroom as [$username, $name, $className]) {
+
             $user = $makeTeacher($username, $name);
+            // Penugasan wali kelas: guru kelas ini adalah wali kelasnya.
+            \App\Models\HomeroomTeacher::updateOrCreate(
+                ['class_name' => $className],
+                [
+                    'id' => (string) Str::uuid(),
+                    'user_id' => $user->id,
+                    'username' => $username,
+                    'teacher_name' => $name,
+                ]
+            );
             foreach ($coreSubjects as $subject) {
                 $assign($user, $className, $subject);
             }
