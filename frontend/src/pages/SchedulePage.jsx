@@ -6,6 +6,7 @@ import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 import { CLASSES, DAYS, SUBJECTS } from '../constants';
 import TeacherAssignmentsPanel from '../components/TeacherAssignmentsPanel';
+import HomeroomAssignmentsPanel from '../components/HomeroomAssignmentsPanel';
 
 export default function SchedulePage({ user, notify }) {
 
@@ -14,7 +15,7 @@ export default function SchedulePage({ user, notify }) {
   const piketPager = usePagination(piketList, 5, []);
   const [loading, setLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'piket'
+  const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'wali' | 'piket'
   const isGuru = user?.role === 'guru';
   const [teacherSubjects, setTeacherSubjects] = useState([]);
   const [teacherUsers, setTeacherUsers] = useState([]);
@@ -163,6 +164,17 @@ export default function SchedulePage({ user, notify }) {
               Penugasan Guru Mapel
             </button>
           )}
+          {user?.role === 'admin' && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'wali'}
+              onClick={() => setActiveTab('wali')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'wali' ? 'bg-plum text-white shadow-md shadow-purple-600/20' : 'text-slate-600 hover:bg-slate-200/50'}`}
+            >
+              Penugasan Wali Kelas
+            </button>
+          )}
           <button
             type="button"
             role="tab"
@@ -287,6 +299,10 @@ export default function SchedulePage({ user, notify }) {
 
       {activeTab === 'mapel' && user?.role === 'admin' && (
         <TeacherAssignmentsPanel notify={notify} />
+      )}
+
+      {activeTab === 'wali' && user?.role === 'admin' && (
+        <HomeroomAssignmentsPanel notify={notify} />
       )}
 
       {/* Add Schedule Modal */}
