@@ -43,6 +43,25 @@ class StudentController extends Controller
         return response()->json($data);
     }
 
+    public function show(Request $request, $id)
+    {
+        $student = Student::where('id', $id)->first();
+        if (!$student) {
+            return response()->json(['message' => 'Siswa tidak ditemukan.'], 404);
+        }
+
+        // Guru mapel: only students in their assigned classes (same scope as index)
+        $user = $request->user();
+        if ($user && $user->role === 'guru') {
+            $assignedClasses = TeacherScope::getAssignedClasses($user);
+            if ($assignedClasses !== null && !in_array($student->class_name, $assignedClasses)) {
+                return response()->json(['message' => 'Anda tidak memiliki akses ke siswa ini.'], 403);
+            }
+        }
+
+        return response()->json($student);
+    }
+
     public function store(Request $request)
     {
         $user = $request->user();
@@ -116,10 +135,34 @@ class StudentController extends Controller
             'name' => 'sometimes|string',
             'class_name' => 'sometimes|string',
             'gender' => 'sometimes|string',
-            'photo_url' => 'sometimes|string',
+            'photo_url' => 'sometimes|nullable|string',
+            // Biodata lengkap (halaman detail siswa)
+            'nisn' => 'sometimes|nullable|string',
+            'nik' => 'sometimes|nullable|string',
+            'no_kk' => 'sometimes|nullable|string',
+            'birth_place' => 'sometimes|nullable|string',
+            'birth_date' => 'sometimes|nullable|date',
+            'religion' => 'sometimes|nullable|string',
+            'address' => 'sometimes|nullable|string',
+            'child_order' => 'sometimes|nullable|integer|min:0',
+            'siblings_count' => 'sometimes|nullable|integer|min:0',
+            'father_name' => 'sometimes|nullable|string',
+            'father_job' => 'sometimes|nullable|string',
+            'mother_name' => 'sometimes|nullable|string',
+            'mother_job' => 'sometimes|nullable|string',
+            'guardian_name' => 'sometimes|nullable|string',
+            'parent_phone' => 'sometimes|nullable|string',
+            'previous_school' => 'sometimes|nullable|string',
+            'enrollment_year' => 'sometimes|nullable|string',
         ]);
 
-        $student->update($request->only(['nis', 'name', 'class_name', 'gender', 'photo_url']));
+        $student->update($request->only([
+            'nis', 'name', 'class_name', 'gender', 'photo_url',
+            'nisn', 'nik', 'no_kk', 'birth_place', 'birth_date', 'religion',
+            'address', 'child_order', 'siblings_count', 'father_name',
+            'father_job', 'mother_name', 'mother_job', 'guardian_name',
+            'parent_phone', 'previous_school', 'enrollment_year',
+        ]));
 
         return response()->json($student);
     }
