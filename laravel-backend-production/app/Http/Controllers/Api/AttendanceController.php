@@ -18,7 +18,7 @@ class AttendanceController extends Controller
         if (!$user) return false;
         if (in_array($user->role, ['admin', 'kepsek'])) return true;
         if ($user->role === 'guru' && \Illuminate\Support\Facades\Schema::hasTable('guru_piket')) {
-            return \App\Models\GuruPiket::where('date', now()->format('Y-m-d'))
+            return \App\Models\GuruPiket::where('date', now('Asia/Jakarta')->format('Y-m-d'))
                 ->where('teacher_name', $user->name)
                 ->exists();
         }
