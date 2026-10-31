@@ -15,7 +15,6 @@ export default function SchedulePage({ user, notify }) {
   const [openClassKeys, setOpenClassKeys] = useState({});
   const toggleClassGroup = (key) => setOpenClassKeys((prev) => ({ ...prev, [key]: !prev[key] }));
   const isGuru = user?.role === 'guru';
-  const [teacherSubjects, setTeacherSubjects] = useState([]);
   const [teacherUsers, setTeacherUsers] = useState([]);
   const [showTeacherSuggest, setShowTeacherSuggest] = useState(false);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
@@ -62,16 +61,6 @@ export default function SchedulePage({ user, notify }) {
           setTeacherUsers(list);
         })
         .catch(() => setTeacherUsers([]));
-    }
-  }, [user]);
-
-  // Guru hanya melihat jadwal mata pelajaran yang ia ampu
-  useEffect(() => {
-    if (isGuru) {
-      api
-        .getMyTeacherScope()
-        .then((res) => setTeacherSubjects(res.data?.subjects || []))
-        .catch((err) => console.error('Failed fetching teacher scope', err));
     }
   }, [user]);
 
@@ -146,8 +135,11 @@ export default function SchedulePage({ user, notify }) {
     }
   };
 
+  // Guru hanya melihat jadwal mengajarnya SENDIRI: saring dari nama
+  // guru pada jadwal, bukan dari mata pelajaran — mapel yang sama bisa
+  // diajar guru lain di kelas lain dan itu bukan jadwalnya.
   const visibleSchedules = isGuru
-    ? schedules.filter((s) => teacherSubjects.includes(s.subject_name))
+    ? schedules.filter((s) => s.teacher_name === user?.name)
     : schedules;
 
   return (
