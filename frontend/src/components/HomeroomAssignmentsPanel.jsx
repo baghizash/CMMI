@@ -17,7 +17,7 @@ export default function HomeroomAssignmentsPanel({ notify }) {
     try {
       const [hRes, uRes] = await Promise.all([api.getHomeroomTeachers(), api.getUsers()]);
       setRows(hRes.data.data || []);
-      const teachers = (uRes.data.data || []).filter((u) => u.role === 'guru' || u.role === 'guru_piket');
+      const teachers = (uRes.data.data || []).filter((u) => u.role === 'guru');
       setUsersList(teachers);
       if (teachers.length > 0) {
         setForm((prev) => ({
