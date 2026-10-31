@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Users, Plus, Search, Trash2, Printer, FileSpreadsheet, GraduationCap, ArrowRight, X, BookOpen
+  Users, Plus, Search, Trash2, Printer, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye, BookOpen
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import * as api from '../services/api';
 import { CLASSES } from '../constants';
 import ImportStudentsModal from '../components/ImportStudentsModal';
 import StudentPrintGrid from '../components/StudentPrintGrid';
 import ClassPromotionModal from '../components/ClassPromotionModal';
+import StudentCardModal from '../components/StudentCardModal';
+import StudentGradesModal from '../components/StudentGradesModal';
+import PaginationBar from '../components/PaginationBar';
+import usePagination from '../hooks/usePagination';
 
 export default function StudentsPage({ notify }) {
   const [students, setStudents] = useState([]);
@@ -20,7 +23,9 @@ export default function StudentsPage({ notify }) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [showBatchPrint, setShowBatchPrint] = useState(false);
-  const [selectedStudentQR, setSelectedStudentQR] = useState(null);
+  const [cardStudent, setCardStudent] = useState(null);
+  const [gradesStudent, setGradesStudent] = useState(null);
+  const studentPager = usePagination(students, 5, [selectedClass, searchQuery]);
 
   const [newStudent, setNewStudent] = useState({
     nis: '',
@@ -29,8 +34,6 @@ export default function StudentsPage({ notify }) {
     gender: 'L',
     photo_url: '',
   });
-
-  const [studentGrades, setStudentGrades] = useState([]);
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -48,20 +51,6 @@ export default function StudentsPage({ notify }) {
   useEffect(() => {
     fetchStudents();
   }, [selectedClass, searchQuery]);
-
-  useEffect(() => {
-    if (!selectedStudentQR) return;
-    const fetchGrades = async () => {
-      try {
-        const res = await api.getStudentGrades(selectedStudentQR.id);
-        setStudentGrades(res.data || []);
-      } catch (e) {
-        console.error('Failed fetching grades', e);
-        setStudentGrades([]);
-      }
-    };
-    fetchGrades();
-  }, [selectedStudentQR]);
 
   const handleAddStudent = async (e) => {
     e.preventDefault();
@@ -197,10 +186,18 @@ export default function StudentsPage({ notify }) {
                   </td>
                 </tr>
               ) : (
-                students.map((st) => (
+                studentPager.pageItems.map((st) => (
                   <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4 font-mono font-bold text-slate-700">{st.nis}</td>
-                    <td className="px-6 py-4 font-bold text-slate-900">{st.name}</td>
+                    <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          onClick={() => setCardStudent(st)}
+                          className="font-bold text-slate-900 hover:text-marine-deep underline-offset-2 hover:underline text-left"
+                        >
+                          {st.name}
+                        </button>
+                      </td>
                     <td className="px-6 py-4">
                       <span className="px-2.5 py-1 bg-slate-100 rounded-xl font-bold text-slate-700">
                         {st.class_name}
@@ -210,10 +207,16 @@ export default function StudentsPage({ notify }) {
                     <td className="px-6 py-4 font-mono text-slate-500 text-[11px]">{st.qr_code}</td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button
-                        onClick={() => setSelectedStudentQR(st)}
-                        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-[11px] transition-colors"
+                        onClick={() => setCardStudent(st)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-marine/10 hover:bg-marine/15 text-marine-deep rounded-full font-bold text-[11px] transition-colors"
                       >
-                        Detail & QR
+                        <Eye className="w-3.5 h-3.5" /> Detail
+                      </button>
+                      <button
+                        onClick={() => setGradesStudent(st)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-tang/10 hover:bg-tang/15 text-tang-dark rounded-full font-bold text-[11px] transition-colors"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" /> Nilai
                       </button>
                       <button
                         onClick={() => handleDeleteStudent(st.id, st.name)}
@@ -229,6 +232,9 @@ export default function StudentsPage({ notify }) {
             </tbody>
           </table>
         </div>
+        {students.length > 0 && (
+          <PaginationBar page={studentPager.page} totalPages={studentPager.totalPages} total={studentPager.total} perPage={studentPager.perPage} onPageChange={studentPager.setPage} />
+        )}
       </div>
 
       {/* Add Student Modal */}
@@ -310,46 +316,6 @@ export default function StudentsPage({ notify }) {
         </div>
       )}
 
-      {/* Student QR & Detail Modal */}
-      {selectedStudentQR && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative text-center">
-            <button
-              onClick={() => setSelectedStudentQR(null)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <h3 className="text-base font-extrabold text-slate-900">{selectedStudentQR.name}</h3>
-            <p className="text-xs text-slate-500 font-medium">{selectedStudentQR.class_name} • NIS: {selectedStudentQR.nis}</p>
-
-            <div className="p-4 bg-white border border-slate-200 rounded-2xl my-6 inline-block shadow-inner">
-              <QRCodeSVG value={selectedStudentQR.qr_code || selectedStudentQR.nis} size={160} level="H" />
-            </div>
-            <p className="text-xs font-mono text-slate-400 mb-6">{selectedStudentQR.qr_code}</p>
-
-            {/* Grades Section */}
-            <div className="text-left border-t border-slate-100 pt-4">
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-indigo-600" /> Nilai Akademik Siswa
-              </h4>
-              {studentGrades.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Belum ada data nilai tercatat.</p>
-              ) : (
-                <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                  {studentGrades.map((g) => (
-                    <div key={g.id} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-xl">
-                      <span className="font-semibold text-slate-700">{g.subject_name}</span>
-                      <span className="font-bold text-indigo-600">{g.grade} ({g.grade_type})</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Import Modal */}
       <ImportStudentsModal
         isOpen={showImportModal}
@@ -357,6 +323,16 @@ export default function StudentsPage({ notify }) {
         onImportSuccess={fetchStudents}
         notify={notify}
       />
+
+      {/* Student card popout: the card only, centred */}
+      {cardStudent && (
+        <StudentCardModal student={cardStudent} onClose={() => setCardStudent(null)} />
+      )}
+
+      {/* Grade detail popout: separate window */}
+      {gradesStudent && (
+        <StudentGradesModal student={gradesStudent} onClose={() => setGradesStudent(null)} />
+      )}
 
       {/* Class Promotion Modal */}
       <ClassPromotionModal

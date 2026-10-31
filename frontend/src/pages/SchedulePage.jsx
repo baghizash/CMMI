@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Trash2, UserCog, BookOpen } from 'lucide-react';
 import * as api from '../services/api';
+import PaginationBar from '../components/PaginationBar';
+import usePagination from '../hooks/usePagination';
 import { CLASSES, DAYS, SUBJECTS } from '../constants';
 
 export default function SchedulePage({ user, notify }) {
@@ -8,7 +10,9 @@ export default function SchedulePage({ user, notify }) {
   const [selectedDay, setSelectedDay] = useState('Senin');
 
   const [schedules, setSchedules] = useState([]);
+  const schedulePager = usePagination(schedules, 5, [selectedClass, selectedDay]);
   const [piketList, setPiketList] = useState([]);
+  const piketPager = usePagination(piketList, 5, [selectedDay]);
   const [loading, setLoading] = useState(false);
 
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
@@ -181,7 +185,7 @@ export default function SchedulePage({ user, notify }) {
                     </td>
                   </tr>
                 ) : (
-                  schedules.map((sch) => (
+                  schedulePager.pageItems.map((sch) => (
                     <tr key={sch.id} className="hover:bg-slate-50">
                       <td className="px-6 py-4 font-bold text-indigo-600">Ke-{sch.period}</td>
                       <td className="px-6 py-4 font-mono">{sch.start_time} - {sch.end_time}</td>
@@ -201,6 +205,9 @@ export default function SchedulePage({ user, notify }) {
               </tbody>
             </table>
           </div>
+          {schedules.length > 0 && (
+            <PaginationBar page={schedulePager.page} totalPages={schedulePager.totalPages} total={schedulePager.total} perPage={schedulePager.perPage} onPageChange={schedulePager.setPage} />
+          )}
         </div>
 
         {/* Guru Piket List */}
@@ -212,7 +219,7 @@ export default function SchedulePage({ user, notify }) {
             <p className="text-xs text-slate-400 italic py-4 text-center">Belum ada guru piket terdaftar hari ini.</p>
           ) : (
             <div className="space-y-2">
-              {piketList.map((p) => (
+              {piketPager.pageItems.map((p) => (
                 <div key={p.id} className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
                   <div>
                     <p className="text-xs font-bold text-slate-900">{p.teacher_name}</p>
@@ -227,6 +234,9 @@ export default function SchedulePage({ user, notify }) {
                 </div>
               ))}
             </div>
+          )}
+          {piketList.length > 0 && (
+            <PaginationBar page={piketPager.page} totalPages={piketPager.totalPages} total={piketPager.total} perPage={piketPager.perPage} onPageChange={piketPager.setPage} />
           )}
         </div>
       </div>

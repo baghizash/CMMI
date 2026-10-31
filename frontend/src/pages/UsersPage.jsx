@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { UserCog, Plus, Trash2, Shield, Lock, X } from 'lucide-react';
 import * as api from '../services/api';
+import PaginationBar from '../components/PaginationBar';
+import usePagination from '../hooks/usePagination';
 
 export default function UsersPage({ user, notify }) {
   const [usersList, setUsersList] = useState([]);
+  const userPager = usePagination(usersList, 5);
   const [loading, setLoading] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
 
@@ -92,7 +95,7 @@ export default function UsersPage({ user, notify }) {
                   </td>
                 </tr>
               ) : (
-                usersList.map((u) => (
+                userPager.pageItems.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 font-bold text-slate-900">{u.name}</td>
                     <td className="px-6 py-4 font-mono text-slate-700">{u.username}</td>
@@ -130,6 +133,9 @@ export default function UsersPage({ user, notify }) {
             </tbody>
           </table>
         </div>
+        {usersList.length > 0 && (
+          <PaginationBar page={userPager.page} totalPages={userPager.totalPages} total={userPager.total} perPage={userPager.perPage} onPageChange={userPager.setPage} />
+        )}
       </div>
 
       {/* Add User Modal */}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Save, UserCheck, Shield, Plus, Trash2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import * as api from '../services/api';
+import PaginationBar from '../components/PaginationBar';
+import usePagination from '../hooks/usePagination';
 import { CLASSES, SUBJECTS } from '../constants';
 
 export default function GradesPage({ user, notify }) {
@@ -18,6 +20,7 @@ export default function GradesPage({ user, notify }) {
 
   // Admin Teacher Assignments State
   const [assignments, setAssignments] = useState([]);
+  const assignmentPager = usePagination(assignments, 5, [activeSubTab]);
   const [usersList, setUsersList] = useState([]);
   const [newAssignment, setNewAssignment] = useState({
     user_id: '',
@@ -475,7 +478,7 @@ export default function GradesPage({ user, notify }) {
                       </td>
                     </tr>
                   ) : (
-                    assignments.map((ass) => (
+                    assignmentPager.pageItems.map((ass) => (
                       <tr key={ass.id} className="hover:bg-slate-50">
                         <td className="px-6 py-4 font-bold text-slate-900">{ass.teacher_name}</td>
                         <td className="px-6 py-4">
@@ -503,6 +506,9 @@ export default function GradesPage({ user, notify }) {
                 </tbody>
               </table>
             </div>
+            {assignments.length > 0 && (
+              <PaginationBar page={assignmentPager.page} totalPages={assignmentPager.totalPages} total={assignmentPager.total} perPage={assignmentPager.perPage} onPageChange={assignmentPager.setPage} />
+            )}
           </div>
         </div>
       )}
