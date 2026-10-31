@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users, Plus, Search, Trash2, Printer, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye, BookOpen
 } from 'lucide-react';
@@ -13,6 +14,7 @@ import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 
 export default function StudentsPage({ notify }) {
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -174,7 +176,7 @@ export default function StudentsPage({ notify }) {
                 <th className="px-6 py-4">Nama Siswa</th>
                 <th className="px-6 py-4">Kelas</th>
                 <th className="px-6 py-4">L/P</th>
-                <th className="px-6 py-4">QR Code</th>
+                <th className="px-6 py-4">Detail</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
@@ -192,7 +194,7 @@ export default function StudentsPage({ notify }) {
                     <td className="px-6 py-4">
                         <button
                           type="button"
-                          onClick={() => setCardStudent(st)}
+                          onClick={() => navigate(`/students/${st.id}`)}
                           className="font-bold text-slate-900 hover:text-marine-deep underline-offset-2 hover:underline text-left"
                         >
                           {st.name}
@@ -204,14 +206,15 @@ export default function StudentsPage({ notify }) {
                       </span>
                     </td>
                     <td className="px-6 py-4">{st.gender}</td>
-                    <td className="px-6 py-4 font-mono text-slate-500 text-[11px]">{st.qr_code}</td>
-                    <td className="px-6 py-4 text-right space-x-2">
+                    <td className="px-6 py-4">
                       <button
                         onClick={() => setCardStudent(st)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-marine/10 hover:bg-marine/15 text-marine-deep rounded-full font-bold text-[11px] transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" /> Detail
                       </button>
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-2">
                       <button
                         onClick={() => setGradesStudent(st)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-tang/10 hover:bg-tang/15 text-tang-dark rounded-full font-bold text-[11px] transition-colors"
