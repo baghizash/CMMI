@@ -68,21 +68,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/students/{id}', [StudentController::class, 'show']);
     Route::post('/students', [StudentController::class, 'store']);
 
-    // Student management routes (Admin, Kepsek & Guru Piket only)
-    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
+    // Student management routes (Admin & Kepsek only)
+    Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
         Route::post('/students/import', [StudentController::class, 'import']);
         Route::post('/students/promote-class', [StudentController::class, 'promoteClass']);
         Route::put('/students/{id}', [StudentController::class, 'update']);
         Route::delete('/students/{id}', [StudentController::class, 'destroy']);
     });
 
-    // Daily Attendance routes — Absen Hadir & Pulang (Admin, Kepsek & Guru Piket only)
-    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
-        Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
-        Route::get('/attendance', [AttendanceController::class, 'index']);
-        Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
-        Route::delete('/attendance/{id}', [AttendanceController::class, 'destroy']);
-    });
+    // Daily Attendance routes — Absen Masuk & Pulang. Akses diperiksa
+    // di AttendanceController: admin/kepsek selalu boleh; guru hanya
+    // bila hari ini ia bertugas piket (peran guru_piket sudah dihapus).
+    Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
+    Route::get('/attendance', [AttendanceController::class, 'index']);
+    Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
+    Route::delete('/attendance/{id}', [AttendanceController::class, 'destroy']);
 
     // Subject Attendance routes — Absen Mapel (scoped in controller for guru)
     Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket,guru')->group(function () {
@@ -107,8 +107,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dashboard routes
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
-    // Export routes (Admin, Kepsek & Guru Piket only)
-    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
+    // Export routes (Admin & Kepsek only)
+    Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
         Route::get('/export/excel', [ExportController::class, 'excel']);
     });
 
