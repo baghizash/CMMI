@@ -74,6 +74,7 @@ class RandomGradesSeeder extends Seeder
                     [
                         'student_id' => $student->id,
                         'subject_name' => $subject,
+                        'semester_id' => \App\Models\Semester::activeId(),
                     ],
                     [
                         'id' => (string) Str::uuid(),
