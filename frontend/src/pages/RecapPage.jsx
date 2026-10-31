@@ -3,6 +3,7 @@ import {
   Clock, Download, Filter, Plus, Trash2, Calendar, FileSpreadsheet, CheckCircle2, AlertCircle, BookOpen, UserCheck
 } from 'lucide-react';
 import * as api from '../services/api';
+import { confirmDialog } from '../components/ConfirmDialog';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 import { CLASSES } from '../constants';
@@ -77,7 +78,7 @@ export default function RecapPage({ user, notify }) {
   };
 
   const handleDeleteAttendance = async (id) => {
-    if (!window.confirm('Hapus baris data absensi ini?')) return;
+    if (!(await confirmDialog({ message: 'Hapus baris data absensi ini?', confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteAttendance(id);
       notify && notify('success', 'Data absensi dihapus.');
