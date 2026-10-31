@@ -291,8 +291,8 @@ export default function SchedulePage({ user, notify }) {
 
       {/* Add Schedule Modal */}
       {showAddScheduleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-backdrop-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-pop-in">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Tambah Jadwal Pelajaran</h3>
             <form onSubmit={handleAddSchedule} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -423,8 +423,8 @@ export default function SchedulePage({ user, notify }) {
 
       {/* Add Piket Modal */}
       {showAddPiketModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-backdrop-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-pop-in">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Set Guru Piket</h3>
             <form onSubmit={handleAddPiket} className="space-y-3">
               <div>
