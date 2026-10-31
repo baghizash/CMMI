@@ -8,6 +8,7 @@ import ScannerPage from './pages/ScannerPage';
 import StudentsPage from './pages/StudentsPage';
 import StudentDetailPage from './pages/StudentDetailPage';
 import StudentTranscriptPage from './pages/StudentTranscriptPage';
+import TeacherAssignmentsPage from './pages/TeacherAssignmentsPage';
 import RecapPage from './pages/RecapPage';
 import SchedulePage from './pages/SchedulePage';
 import UsersPage from './pages/UsersPage';
@@ -74,7 +75,31 @@ function AppContent() {
           />
           <Route
             path="/grades"
-            element={user ? <GradesPage user={user} notify={notify} /> : <Navigate to="/login" replace />}
+            element={
+              user ? (
+                user.role === 'admin' ? (
+                  <Navigate to="/penugasan-guru" replace />
+                ) : (
+                  <GradesPage user={user} notify={notify} />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/penugasan-guru"
+            element={
+              user ? (
+                user.role === 'admin' ? (
+                  <TeacherAssignmentsPage notify={notify} />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
           />
           <Route
             path="/recap"
