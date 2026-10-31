@@ -40,7 +40,6 @@ export default function SchedulePage({ user, notify }) {
   const [newPiket, setNewPiket] = useState({
     date: new Date().toISOString().split('T')[0],
     teacher_name: '',
-    notes: '',
   });
 
   const fetchData = async () => {
@@ -163,7 +162,7 @@ export default function SchedulePage({ user, notify }) {
   const handleAddPiket = async (e) => {
     e.preventDefault();
     try {
-      await api.createGuruPiket(newPiket);
+      await api.createGuruPiket({ date: newPiket.date, teacher_name: newPiket.teacher_name });
       notify && notify('success', 'Guru Piket ditambahkan.');
       setShowAddPiketModal(false);
       fetchData();
