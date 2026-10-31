@@ -76,8 +76,6 @@ export const updateStudent = (id, data) =>
 export const deleteStudent = (id) =>
   apiClient.delete(`/api/students/${id}`);
 
-export const seedDemo = () =>
-  apiClient.post('/api/students/seed-demo');
 
 // Attendance APIs
 export const scanAttendance = (data) =>
