@@ -8,6 +8,16 @@ import { CLASSES, DAYS, SUBJECTS } from '../constants';
 import TeacherAssignmentsPanel from '../components/TeacherAssignmentsPanel';
 import HomeroomAssignmentsPanel from '../components/HomeroomAssignmentsPanel';
 
+// Tanggal hari ini menurut jam lokal perangkat (WIB), bukan UTC:
+// fungsi bawaan JS untuk tanggal ISO memakai UTC sehingga pada dini
+// hari WIB tanggalnya masih kemarin — itu yang membuat piket yang
+// tersimpan untuk hari ini tidak tampil di daftar hari ini.
+const localToday = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 export default function SchedulePage({ user, notify }) {
 
   const [schedules, setSchedules] = useState([]);
@@ -38,7 +48,7 @@ export default function SchedulePage({ user, notify }) {
   });
 
   const [newPiket, setNewPiket] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: localToday(),
     teacher_name: '',
   });
 
@@ -47,7 +57,7 @@ export default function SchedulePage({ user, notify }) {
     try {
       const [schRes, piketRes] = await Promise.all([
         api.getSchedules({}),
-        api.getGuruPiket({ date: new Date().toISOString().split('T')[0] }),
+        api.getGuruPiket({ date: localToday() }),
       ]);
       setSchedules(schRes.data || []);
       setPiketList(piketRes.data || []);
@@ -163,7 +173,7 @@ export default function SchedulePage({ user, notify }) {
     e.preventDefault();
     try {
       await api.createGuruPiket({ date: newPiket.date, teacher_name: newPiket.teacher_name });
-      notify && notify('success', 'Guru Piket ditambahkan.');
+      notify && notify('success', `Guru Piket ${newPiket.teacher_name} untuk tanggal ${newPiket.date} ditambahkan.`);
       setShowAddPiketModal(false);
       fetchData();
     } catch (err) {
