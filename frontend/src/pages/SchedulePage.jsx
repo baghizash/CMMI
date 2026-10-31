@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Trash2, UserCog, BookOpen } from 'lucide-react';
 import * as api from '../services/api';
+import { confirmDialog } from '../components/ConfirmDialog';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 import { CLASSES, DAYS, SUBJECTS } from '../constants';
@@ -97,7 +98,7 @@ export default function SchedulePage({ user, notify }) {
   };
 
   const handleDeleteSchedule = async (id) => {
-    if (!window.confirm('Hapus jadwal pelajaran ini?')) return;
+    if (!(await confirmDialog({ message: 'Hapus jadwal pelajaran ini?', confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteSchedule(id);
       notify && notify('success', 'Jadwal dihapus.');
@@ -120,7 +121,7 @@ export default function SchedulePage({ user, notify }) {
   };
 
   const handleDeletePiket = async (id) => {
-    if (!window.confirm('Hapus guru piket ini?')) return;
+    if (!(await confirmDialog({ message: 'Hapus guru piket ini?', confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteGuruPiket(id);
       notify && notify('success', 'Guru piket dihapus.');
