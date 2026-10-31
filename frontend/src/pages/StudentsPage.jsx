@@ -9,6 +9,8 @@ import StudentPrintGrid from '../components/StudentPrintGrid';
 import ClassPromotionModal from '../components/ClassPromotionModal';
 import StudentCardModal from '../components/StudentCardModal';
 import StudentGradesModal from '../components/StudentGradesModal';
+import PaginationBar from '../components/PaginationBar';
+import usePagination from '../hooks/usePagination';
 
 export default function StudentsPage({ notify }) {
   const [students, setStudents] = useState([]);
@@ -23,6 +25,7 @@ export default function StudentsPage({ notify }) {
   const [showBatchPrint, setShowBatchPrint] = useState(false);
   const [cardStudent, setCardStudent] = useState(null);
   const [gradesStudent, setGradesStudent] = useState(null);
+  const studentPager = usePagination(students, 5, [selectedClass, searchQuery]);
 
   const [newStudent, setNewStudent] = useState({
     nis: '',
@@ -183,7 +186,7 @@ export default function StudentsPage({ notify }) {
                   </td>
                 </tr>
               ) : (
-                students.map((st) => (
+                studentPager.pageItems.map((st) => (
                   <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4 font-mono font-bold text-slate-700">{st.nis}</td>
                     <td className="px-6 py-4">
@@ -229,6 +232,9 @@ export default function StudentsPage({ notify }) {
             </tbody>
           </table>
         </div>
+        {students.length > 0 && (
+          <PaginationBar page={studentPager.page} totalPages={studentPager.totalPages} total={studentPager.total} perPage={studentPager.perPage} onPageChange={studentPager.setPage} />
+        )}
       </div>
 
       {/* Add Student Modal */}
