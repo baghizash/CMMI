@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Trash2, UserCog, BookOpen } from 'lucide-react';
+import { Calendar, Plus, Trash2, UserCog, BookOpen, ChevronDown } from 'lucide-react';
 import * as api from '../services/api';
 import { confirmDialog } from '../components/ConfirmDialog';
 import PaginationBar from '../components/PaginationBar';
@@ -16,7 +16,8 @@ export default function SchedulePage({ user, notify }) {
   const [loading, setLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'wali' | 'piket'
-  const [classFilter, setClassFilter] = useState('Semua Kelas');
+  const [openClassKeys, setOpenClassKeys] = useState({});
+  const toggleClassGroup = (key) => setOpenClassKeys((prev) => ({ ...prev, [key]: !prev[key] }));
   const isGuru = user?.role === 'guru';
   const [teacherSubjects, setTeacherSubjects] = useState([]);
   const [teacherUsers, setTeacherUsers] = useState([]);
@@ -122,7 +123,8 @@ export default function SchedulePage({ user, notify }) {
         last.class_name === sch.class_name &&
         last.subject_name === sch.subject_name &&
         last.teacher_name === sch.teacher_name &&
-        sch.period === last.lastPeriod + 1
+        sch.period === last.lastPeriod + 1 &&
+        String(sch.start_time).substring(0, 5) === String(last.end_time).substring(0, 5)
       ) {
         last.end_time = sch.end_time;
         last.lastPeriod = sch.period;
@@ -182,9 +184,7 @@ export default function SchedulePage({ user, notify }) {
 
   const visibleSchedules = isGuru
     ? schedules.filter((s) => teacherSubjects.includes(s.subject_name))
-    : classFilter === 'Semua Kelas'
-      ? schedules
-      : schedules.filter((s) => s.class_name === classFilter);
+    : schedules;
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
@@ -246,32 +246,15 @@ export default function SchedulePage({ user, notify }) {
             <p className="text-xs font-semibold text-slate-500">
               {isGuru
                 ? `${DAYS.length} hari efektif · ${visibleSchedules.length} jadwal mata pelajaran Anda`
-                : classFilter === 'Semua Kelas'
-                  ? `${DAYS.length} hari efektif · ${schedules.length} jadwal pelajaran dari semua kelas`
-                  : `${DAYS.length} hari efektif · ${visibleSchedules.length} jadwal pelajaran kelas ${classFilter}`}
+                : `${DAYS.length} hari efektif · ${schedules.length} jadwal pelajaran dari semua kelas`}
             </p>
             {!isGuru && (
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Kelas:</span>
-                  <select
-                    value={classFilter}
-                    onChange={(e) => setClassFilter(e.target.value)}
-                    className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  >
-                    <option value="Semua Kelas">Semua Kelas</option>
-                    {CLASSES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  onClick={() => setShowAddScheduleModal(true)}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" /> Tambah Jadwal
-                </button>
-              </div>
+              <button
+                onClick={() => setShowAddScheduleModal(true)}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Tambah Jadwal
+              </button>
             )}
           </div>
 
@@ -282,12 +265,27 @@ export default function SchedulePage({ user, notify }) {
                 .sort((x, y) => String(x.class_name).localeCompare(String(y.class_name)) || x.period - y.period);
               const dayRows = mergeDayRows(daySchedules);
               const hhmm = (t) => (t ? String(t).substring(0, 5) : '');
+              // Kelompok per kelas untuk tampilan akordeon (admin):
+              // awalnya hanya kepala kelas yang terlihat; jadwalnya
+              // terbuka ke bawah saat kepala kelas ditekan.
+              const classGroups = [];
+              daySchedules.forEach((sch) => {
+                let g = classGroups.find((x) => x.class_name === sch.class_name);
+                if (!g) {
+                  g = { class_name: sch.class_name, entries: [] };
+                  classGroups.push(g);
+                }
+                g.entries.push(sch);
+              });
+              classGroups.forEach((g) => {
+                g.rows = mergeDayRows(g.entries);
+              });
               return (
                 <section key={day} aria-label={`Jadwal hari ${day}`} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
                   <header className="px-5 py-4 bg-plum/5 border-b border-slate-100 flex items-center justify-between">
                     <h3 className="font-extrabold text-slate-900 text-sm">{day}</h3>
                     <span className="px-2.5 py-1 bg-plum/10 text-plum rounded-full text-[10px] font-extrabold">
-                      {isGuru ? daySchedules.length : dayRows.length} pelajaran
+                      {isGuru ? `${daySchedules.length} pelajaran` : `${classGroups.length} kelas`}
                     </span>
                   </header>
                   {daySchedules.length === 0 ? (
@@ -309,29 +307,50 @@ export default function SchedulePage({ user, notify }) {
                       ))}
                     </ul>
                   ) : (
-                    <ul className="divide-y divide-slate-100">
-                      {dayRows.map((row) => (
-                        <li key={row.key} className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50/80 transition-colors">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate">{row.subject_name}</p>
-                            <p className="text-[11px] text-slate-500 truncate">
-                              {row.teacher_name || 'Guru belum diisi'}
-                              <span className="text-slate-400 font-mono"> · {hhmm(row.start_time)}–{hhmm(row.end_time)}</span>
-                            </p>
-                          </div>
-                          <span className="shrink-0 px-2.5 py-1 bg-plum/10 text-plum rounded-xl text-[10px] font-extrabold">{row.class_name}</span>
-                          {!isGuru && (
+                    <div className="divide-y divide-slate-100">
+                      {classGroups.map((g) => {
+                        const groupKey = `${day}|${g.class_name}`;
+                        const open = !!openClassKeys[groupKey];
+                        return (
+                          <div key={g.class_name}>
                             <button
-                              onClick={() => handleDeleteScheduleGroup(row)}
-                              className="shrink-0 p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
-                              title="Hapus Jadwal"
+                              type="button"
+                              onClick={() => toggleClassGroup(groupKey)}
+                              aria-expanded={open}
+                              className="w-full px-5 py-3 flex items-center gap-3 hover:bg-slate-50/80 transition-colors"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <span className="px-2.5 py-1 bg-plum/10 text-plum rounded-xl text-[11px] font-extrabold">{g.class_name}</span>
+                              <span className="flex-1 text-left text-[11px] font-bold text-slate-500">{g.rows.length} pelajaran</span>
+                              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
                             </button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
+                            <div className={`grid transition-all duration-300 ease-out ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                              <div className="overflow-hidden">
+                                <ul className="divide-y divide-slate-100 border-t border-slate-100 bg-slate-50/50">
+                                  {g.rows.map((row) => (
+                                    <li key={row.key} className="pl-14 pr-5 py-2.5 flex items-center gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold text-slate-900 truncate">{row.subject_name}</p>
+                                        <p className="text-[11px] text-slate-500 truncate">
+                                          {row.teacher_name || 'Guru belum diisi'}
+                                          <span className="text-slate-400 font-mono"> · {hhmm(row.start_time)}–{hhmm(row.end_time)}</span>
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => handleDeleteScheduleGroup(row)}
+                                        className="shrink-0 p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
+                                        title="Hapus Jadwal"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </section>
               );
