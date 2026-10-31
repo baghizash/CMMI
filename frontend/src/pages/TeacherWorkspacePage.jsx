@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { GraduationCap, BookOpen, Save, Eye, UserCheck } from 'lucide-react';
+import { GraduationCap, BookOpen, Save, Eye, UserCheck, TrendingUp } from 'lucide-react';
 import * as api from '../services/api';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 import StudentCardModal from '../components/StudentCardModal';
+import PromotionDecisionsPanel from '../components/PromotionDecisionsPanel';
 
 // Ruang kerja guru: Data Siswa dan Nilai Siswa digabung dalam satu halaman
 // dengan tombol pill. Semua isi terikat penugasan guru yang login:
@@ -17,10 +18,11 @@ const SCORE_FIELDS = ['task_score', 'midterm_score', 'remedial_score', 'final_sc
 export default function TeacherWorkspacePage({ user, notify }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get('tab') === 'nilai' ? 'nilai' : 'data';
-  const setTab = (t) => setSearchParams(t === 'nilai' ? { tab: 'nilai' } : {}, { replace: true });
+  const rawTab = searchParams.get('tab');
+  const tab = rawTab === 'nilai' ? 'nilai' : rawTab === 'keputusan' ? 'keputusan' : 'data';
+  const setTab = (t) => setSearchParams(t === 'data' ? {} : { tab: t }, { replace: true });
 
-  const [scope, setScope] = useState({ classes: [], subjects: [], assignments: [] });
+  const [scope, setScope] = useState({ classes: [], subjects: [], assignments: [], homeroom_classes: [] });
   const [students, setStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [classFilter, setClassFilter] = useState('Semua Kelas');
@@ -36,7 +38,7 @@ export default function TeacherWorkspacePage({ user, notify }) {
     (async () => {
       try {
         const [scopeRes, stuRes] = await Promise.all([api.getMyTeacherScope(), api.getStudents({})]);
-        setScope(scopeRes.data || { classes: [], subjects: [], assignments: [] });
+        setScope(scopeRes.data || { classes: [], subjects: [], assignments: [], homeroom_classes: [] });
         setStudents(Array.isArray(stuRes.data) ? stuRes.data : []);
         const assignments = scopeRes.data?.assignments || [];
         if (assignments.length > 0) setActiveAssignment(assignments[0]);
@@ -137,6 +139,11 @@ export default function TeacherWorkspacePage({ user, notify }) {
           <button type="button" role="tab" aria-selected={tab === 'nilai'} onClick={() => setTab('nilai')} className={pillCls(tab === 'nilai')}>
             <BookOpen className="w-4 h-4" /> Nilai Siswa
           </button>
+          {(scope.homeroom_classes || []).length > 0 && (
+            <button type="button" role="tab" aria-selected={tab === 'keputusan'} onClick={() => setTab('keputusan')} className={pillCls(tab === 'keputusan')}>
+              <TrendingUp className="w-4 h-4" /> Keputusan Naik Kelas
+            </button>
+          )}
         </div>
       </div>
 
@@ -346,6 +353,10 @@ export default function TeacherWorkspacePage({ user, notify }) {
             </section>
           )}
         </div>
+      )}
+
+      {tab === 'keputusan' && (
+        <PromotionDecisionsPanel notify={notify} />
       )}
 
       {cardStudent && <StudentCardModal student={cardStudent} onClose={() => setCardStudent(null)} />}
