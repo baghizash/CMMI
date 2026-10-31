@@ -16,6 +16,7 @@ export default function SchedulePage({ user, notify }) {
   const [loading, setLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'wali' | 'piket'
+  const [classFilter, setClassFilter] = useState('Semua Kelas');
   const isGuru = user?.role === 'guru';
   const [teacherSubjects, setTeacherSubjects] = useState([]);
   const [teacherUsers, setTeacherUsers] = useState([]);
@@ -68,7 +69,7 @@ export default function SchedulePage({ user, notify }) {
         .getUsers()
         .then((res) => {
           const list = (res.data.data || [])
-            .filter((u) => u.role === 'guru' || u.role === 'guru_piket')
+            .filter((u) => u.role === 'guru')
             .sort((a, b) => String(a.name).localeCompare(String(b.name)));
           setTeacherUsers(list);
         })
@@ -179,7 +180,11 @@ export default function SchedulePage({ user, notify }) {
     }
   };
 
-  const visibleSchedules = isGuru ? schedules.filter((s) => teacherSubjects.includes(s.subject_name)) : schedules;
+  const visibleSchedules = isGuru
+    ? schedules.filter((s) => teacherSubjects.includes(s.subject_name))
+    : classFilter === 'Semua Kelas'
+      ? schedules
+      : schedules.filter((s) => s.class_name === classFilter);
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
@@ -241,15 +246,32 @@ export default function SchedulePage({ user, notify }) {
             <p className="text-xs font-semibold text-slate-500">
               {isGuru
                 ? `${DAYS.length} hari efektif · ${visibleSchedules.length} jadwal mata pelajaran Anda`
-                : `${DAYS.length} hari efektif · ${schedules.length} jadwal pelajaran dari semua kelas`}
+                : classFilter === 'Semua Kelas'
+                  ? `${DAYS.length} hari efektif · ${schedules.length} jadwal pelajaran dari semua kelas`
+                  : `${DAYS.length} hari efektif · ${visibleSchedules.length} jadwal pelajaran kelas ${classFilter}`}
             </p>
             {!isGuru && (
-              <button
-                onClick={() => setShowAddScheduleModal(true)}
-                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Tambah Jadwal
-              </button>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Kelas:</span>
+                  <select
+                    value={classFilter}
+                    onChange={(e) => setClassFilter(e.target.value)}
+                    className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="Semua Kelas">Semua Kelas</option>
+                    {CLASSES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  onClick={() => setShowAddScheduleModal(true)}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Tambah Jadwal
+                </button>
+              </div>
             )}
           </div>
 
@@ -462,7 +484,7 @@ export default function SchedulePage({ user, notify }) {
                                 className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-indigo-50 flex items-center justify-between gap-2"
                               >
                                 <span>{u.name}</span>
-                                <span className="text-[10px] font-bold text-slate-400">{u.role === 'guru_piket' ? 'Guru Piket' : 'Guru'}</span>
+                                <span className="text-[10px] font-bold text-slate-400">Guru</span>
                               </button>
                             </li>
                           ))}
