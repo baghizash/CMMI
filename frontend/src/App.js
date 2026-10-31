@@ -8,6 +8,7 @@ import ScannerPage from './pages/ScannerPage';
 import StudentsPage from './pages/StudentsPage';
 import StudentDetailPage from './pages/StudentDetailPage';
 import StudentTranscriptPage from './pages/StudentTranscriptPage';
+import TeacherWorkspacePage from './pages/TeacherWorkspacePage';
 import RecapPage from './pages/RecapPage';
 import SchedulePage from './pages/SchedulePage';
 import UsersPage from './pages/UsersPage';
@@ -62,7 +63,17 @@ function AppContent() {
           />
           <Route
             path="/students"
-            element={user ? <StudentsPage notify={notify} /> : <Navigate to="/login" replace />}
+            element={
+              user ? (
+                user.role === 'guru' ? (
+                  <TeacherWorkspacePage user={user} notify={notify} />
+                ) : (
+                  <StudentsPage notify={notify} />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
           />
           <Route
             path="/students/:id"
@@ -78,6 +89,8 @@ function AppContent() {
               user ? (
                 user.role === 'admin' ? (
                   <Navigate to="/schedule" replace />
+                ) : user.role === 'guru' ? (
+                  <Navigate to="/students?tab=nilai" replace />
                 ) : (
                   <GradesPage user={user} notify={notify} />
                 )
