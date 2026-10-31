@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserCog, Plus, Trash2, Shield, Lock, X } from 'lucide-react';
 import * as api from '../services/api';
+import { confirmDialog } from '../components/ConfirmDialog';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 
@@ -48,7 +49,7 @@ export default function UsersPage({ user, notify }) {
   };
 
   const handleDeleteUser = async (id, name) => {
-    if (!window.confirm(`Hapus pengguna ${name}?`)) return;
+    if (!(await confirmDialog({ message: `Hapus pengguna ${name}?`, confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteUser(id);
       notify && notify('success', 'Pengguna berhasil dihapus.');
