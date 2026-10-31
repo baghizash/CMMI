@@ -10,8 +10,34 @@ use Illuminate\Support\Str;
 
 class AttendanceController extends Controller
 {
+    // Absen masuk/pulang: admin dan kepsek selalu boleh. Guru hanya
+    // bila hari ini namanya tercatat sebagai guru piket.
+    private function canDoDailyAttendance(Request $request): bool
+    {
+        $user = $request->user();
+        if (!$user) return false;
+        if (in_array($user->role, ['admin', 'kepsek'])) return true;
+        if ($user->role === 'guru' && \Illuminate\Support\Facades\Schema::hasTable('guru_piket')) {
+            return \App\Models\GuruPiket::where('date', now()->format('Y-m-d'))
+                ->where('teacher_name', $user->name)
+                ->exists();
+        }
+        return false;
+    }
+
+    private function guardDailyAttendance(Request $request)
+    {
+        if ($this->canDoDailyAttendance($request)) return null;
+        return response()->json([
+            'success' => false,
+            'message' => 'Anda tidak memiliki akses absen masuk/pulang. Fitur ini untuk admin, kepsek, dan guru yang hari ini bertugas piket.'
+        ], 403);
+    }
+
     public function scan(Request $request)
     {
+        if ($resp = $this->guardDailyAttendance($request)) return $resp;
+
         $request->validate([
             'qr_code' => 'sometimes|string',
             'nis' => 'sometimes|string',
@@ -123,6 +149,8 @@ class AttendanceController extends Controller
 
     public function index(Request $request)
     {
+        if ($resp = $this->guardDailyAttendance($request)) return $resp;
+
         $query = Attendance::query();
 
         if ($request->has('date')) {
@@ -147,6 +175,8 @@ class AttendanceController extends Controller
 
     public function manual(Request $request)
     {
+        if ($resp = $this->guardDailyAttendance($request)) return $resp;
+
         $request->validate([
             'student_id' => 'required|string',
             'date' => 'sometimes|date',
@@ -208,8 +238,10 @@ class AttendanceController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($resp = $this->guardDailyAttendance($request)) return $resp;
+
         $attendance = Attendance::where('id', $id)->first();
         if (!$attendance) {
             return response()->json(['message' => 'Data tidak ditemukan.'], 404);
