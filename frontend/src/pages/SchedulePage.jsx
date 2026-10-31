@@ -230,12 +230,14 @@ export default function SchedulePage({ user, notify }) {
             <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
               <UserCog className="w-4 h-4 text-amber-600" /> Guru Piket Hari Ini
             </h3>
-            <button
-              onClick={() => setShowAddPiketModal(true)}
-              className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
-            >
-              <UserCog className="w-4 h-4" /> Set Guru Piket
-            </button>
+            {!isGuru && (
+              <button
+                onClick={() => setShowAddPiketModal(true)}
+                className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
+              >
+                <UserCog className="w-4 h-4" /> Set Guru Piket
+              </button>
+            )}
           </div>
           {piketList.length === 0 ? (
             <p className="text-xs text-slate-400 italic py-4 text-center">Belum ada guru piket terdaftar hari ini.</p>
@@ -247,12 +249,14 @@ export default function SchedulePage({ user, notify }) {
                     <p className="text-xs font-bold text-slate-900">{p.teacher_name}</p>
                     <p className="text-[10px] text-slate-500">{p.notes || 'Petugas Piket'}</p>
                   </div>
-                  <button
-                    onClick={() => handleDeletePiket(p.id)}
-                    className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {!isGuru && (
+                    <button
+                      onClick={() => handleDeletePiket(p.id)}
+                      className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
