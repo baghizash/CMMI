@@ -15,7 +15,7 @@ class SubjectGrade extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'student_id', 'student_nis', 'student_name', 'class_name', 'subject_name', 'teacher_id',
+        'id', 'student_id', 'student_nis', 'student_name', 'class_name', 'subject_name', 'semester_id', 'teacher_id',
         'task_score', 'midterm_score', 'remedial_score', 'final_score', 'final_total', 'created_at'
     ];
 }
