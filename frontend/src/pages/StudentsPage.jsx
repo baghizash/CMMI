@@ -4,6 +4,7 @@ import {
   Users, Plus, Search, Trash2, Printer, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye, BookOpen
 } from 'lucide-react';
 import * as api from '../services/api';
+import { confirmDialog } from '../components/ConfirmDialog';
 import { CLASSES } from '../constants';
 
 // Kolom biodata lengkap dari migrasi halaman detail; dipakai untuk lencana status kelengkapan.
@@ -73,7 +74,7 @@ export default function StudentsPage({ notify }) {
   };
 
   const handleDeleteStudent = async (id, name) => {
-    if (!window.confirm(`Hapus siswa ${name}? Data presensi terkait juga akan terhapus.`)) return;
+    if (!(await confirmDialog({ message: `Hapus siswa ${name}? Data presensi terkait juga akan terhapus.`, confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteStudent(id);
       notify && notify('success', 'Siswa berhasil dihapus.');
