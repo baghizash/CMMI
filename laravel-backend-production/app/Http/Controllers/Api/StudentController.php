@@ -184,49 +184,6 @@ class StudentController extends Controller
         ]);
     }
 
-    public function seedDemo()
-    {
-        Student::truncate();
-        Attendance::truncate();
-        SubjectAttendance::truncate();
-
-        $classes = ["1A", "1B", "2A", "2B", "3A", "3B"];
-        $names = [
-            ["Andi Pratama", "L"], ["Sari Rahmawati", "P"], ["Budi Saputra", "L"],
-            ["Dewi Anggraini", "P"], ["Rafi Ramadhan", "L"], ["Putri Maharani", "P"],
-            ["Bagas Nugraha", "L"], ["Intan Permata", "P"], ["Fajar Hidayat", "L"],
-            ["Ayu Lestari", "P"], ["Raka Setiawan", "L"], ["Nadia Safitri", "P"]
-        ];
-
-        $seeded = [];
-        $nisCounter = 1001;
-
-        foreach ($names as $idx => [$name, $gender]) {
-            $cls = $classes[$idx % count($classes)];
-            $nis = (string) $nisCounter++;
-            $qr = "SCH-QR-{$nis}-" . strtoupper(explode(' ', $name)[0]);
-
-            $student = Student::create([
-                'id' => (string) Str::uuid(),
-                'nis' => $nis,
-                'name' => $name,
-                'class_name' => $cls,
-                'gender' => $gender,
-                'photo_url' => '',
-                'qr_code' => $qr,
-                'created_at' => now()->toIso8601String(),
-            ]);
-
-            $seeded[] = $student;
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Berhasil generate " . count($seeded) . " siswa demo.",
-            'count' => count($seeded)
-        ]);
-    }
-
     public function import(Request $request)
     {
         $request->validate([
