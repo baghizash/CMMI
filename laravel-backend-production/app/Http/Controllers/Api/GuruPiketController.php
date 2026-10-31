@@ -26,7 +26,7 @@ class GuruPiketController extends Controller
         $request->validate([
             'date' => 'required|date',
             'teacher_name' => 'required|string',
-            'notes' => 'sometimes|string',
+            'notes' => 'nullable|string',
         ]);
 
         $piket = GuruPiket::create([
