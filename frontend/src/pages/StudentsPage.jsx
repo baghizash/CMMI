@@ -175,15 +175,13 @@ export default function StudentsPage({ notify }) {
                 <th className="px-6 py-4">NIS</th>
                 <th className="px-6 py-4">Nama Siswa</th>
                 <th className="px-6 py-4">Kelas</th>
-                <th className="px-6 py-4">L/P</th>
-                <th className="px-6 py-4">Detail</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">
+                  <td colSpan={4} className="text-center py-12 text-slate-400 font-medium">
                     {loading ? 'Memuat data siswa...' : 'Tidak ada data siswa ditemukan.'}
                   </td>
                 </tr>
@@ -205,16 +203,13 @@ export default function StudentsPage({ notify }) {
                         {st.class_name}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{st.gender}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-right space-x-2">
                       <button
                         onClick={() => setCardStudent(st)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-marine/10 hover:bg-marine/15 text-marine-deep rounded-full font-bold text-[11px] transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" /> Detail
                       </button>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
                       <button
                         onClick={() => setGradesStudent(st)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-tang/10 hover:bg-tang/15 text-tang-dark rounded-full font-bold text-[11px] transition-colors"
