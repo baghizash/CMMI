@@ -4,6 +4,7 @@ import * as api from '../services/api';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 import { CLASSES, DAYS, SUBJECTS } from '../constants';
+import TeacherAssignmentsPanel from '../components/TeacherAssignmentsPanel';
 
 export default function SchedulePage({ user, notify }) {
   const [selectedClass, setSelectedClass] = useState(CLASSES[0]);
@@ -15,6 +16,7 @@ export default function SchedulePage({ user, notify }) {
   const piketPager = usePagination(piketList, 5, [selectedDay]);
   const [loading, setLoading] = useState(false);
 
+  const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'piket'
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [showAddPiketModal, setShowAddPiketModal] = useState(false);
 
@@ -107,28 +109,45 @@ export default function SchedulePage({ user, notify }) {
       {/* Header Bar */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Jadwal Pelajaran & Guru Piket</h2>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">Kelola alokasi mata pelajaran & petugas piket harian</p>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Jadwal & Penugasan</h2>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Jadwal pelajaran, penugasan guru mapel, dan guru piket dalam satu halaman</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60" role="tablist" aria-label="Pilih fitur">
           <button
-            onClick={() => setShowAddPiketModal(true)}
-            className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'jadwal'}
+            onClick={() => setActiveTab('jadwal')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'jadwal' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-200/50'}`}
           >
-            <UserCog className="w-4 h-4" /> Set Guru Piket
+            Jadwal Mapel
           </button>
-
+          {user?.role === 'admin' && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'mapel'}
+              onClick={() => setActiveTab('mapel')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'mapel' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20' : 'text-slate-600 hover:bg-slate-200/50'}`}
+            >
+              Penugasan Guru Mapel
+            </button>
+          )}
           <button
-            onClick={() => setShowAddScheduleModal(true)}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'piket'}
+            onClick={() => setActiveTab('piket')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'piket' ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20' : 'text-slate-600 hover:bg-slate-200/50'}`}
           >
-            <Plus className="w-4 h-4" /> Tambah Jadwal
+            Guru Piket
           </button>
         </div>
       </div>
 
-      {/* Filter Row */}
+      {/* Filter Row (tab Jadwal) */}
+      {activeTab === 'jadwal' && (
       <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-slate-500">Kelas:</span>
@@ -155,12 +174,18 @@ export default function SchedulePage({ user, notify }) {
             ))}
           </select>
         </div>
+        <button
+          onClick={() => setShowAddScheduleModal(true)}
+          className="ml-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> Tambah Jadwal
+        </button>
       </div>
+      )}
 
-      {/* Grid: Schedule Table + Guru Piket Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Schedule Table */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+      {/* Tab panels */}
+      {activeTab === 'jadwal' && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-100">
             <h3 className="font-extrabold text-slate-900 text-sm">
               Jadwal Kelas {selectedClass} - Hari {selectedDay}
@@ -210,11 +235,21 @@ export default function SchedulePage({ user, notify }) {
           )}
         </div>
 
-        {/* Guru Piket List */}
+      )}
+
+      {activeTab === 'piket' && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-            <UserCog className="w-4 h-4 text-amber-600" /> Guru Piket Hari Ini
-          </h3>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+              <UserCog className="w-4 h-4 text-amber-600" /> Guru Piket Hari Ini
+            </h3>
+            <button
+              onClick={() => setShowAddPiketModal(true)}
+              className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
+            >
+              <UserCog className="w-4 h-4" /> Set Guru Piket
+            </button>
+          </div>
           {piketList.length === 0 ? (
             <p className="text-xs text-slate-400 italic py-4 text-center">Belum ada guru piket terdaftar hari ini.</p>
           ) : (
@@ -239,7 +274,11 @@ export default function SchedulePage({ user, notify }) {
             <PaginationBar page={piketPager.page} totalPages={piketPager.totalPages} total={piketPager.total} perPage={piketPager.perPage} onPageChange={piketPager.setPage} />
           )}
         </div>
-      </div>
+      )}
+
+      {activeTab === 'mapel' && user?.role === 'admin' && (
+        <TeacherAssignmentsPanel notify={notify} />
+      )}
 
       {/* Add Schedule Modal */}
       {showAddScheduleModal && (
