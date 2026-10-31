@@ -59,6 +59,8 @@ export const deleteUser = (id) => apiClient.delete(`/api/users/${id}`);
 export const getStudents = (params) =>
   apiClient.get('/api/students', { params });
 
+export const getStudent = (id) => apiClient.get(`/api/students/${id}`);
+
 export const createStudent = (data) =>
   apiClient.post('/api/students', data);
 
