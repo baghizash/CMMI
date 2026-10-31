@@ -107,8 +107,6 @@ export default function UsersPage({ user, notify }) {
                             ? 'bg-rose-100 text-rose-800'
                             : u.role === 'kepsek'
                             ? 'bg-emerald-100 text-emerald-800'
-                            : u.role === 'guru_piket'
-                            ? 'bg-amber-100 text-amber-800'
                             : u.role === 'guru'
                             ? 'bg-indigo-100 text-indigo-800'
                             : 'bg-slate-100 text-slate-800'
@@ -195,7 +193,6 @@ export default function UsersPage({ user, notify }) {
                   className="w-full px-3.5 py-2.5 border rounded-2xl text-xs"
                 >
                   <option value="guru">Guru Mapel</option>
-                  <option value="guru_piket">Guru Piket</option>
                   <option value="kepsek">Kepala Sekolah</option>
                   <option value="admin">Administrator</option>
                 </select>
