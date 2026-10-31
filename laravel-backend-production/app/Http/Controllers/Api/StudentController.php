@@ -68,6 +68,92 @@ class StudentController extends Controller
         return response()->json($student);
     }
 
+    /**
+     * Transkrip lengkap siswa: per semester berisi nilai per mapel,
+     * keputusan naik/tinggal/lulus (arsip), dan ringkasan absensi
+     * harian semester itu (hadir, terlambat, sakit, izin, alpa).
+     */
+    public function transcript(Request $request, $id)
+    {
+        $student = Student::where('id', $id)->first();
+        if (!$student) {
+            return response()->json(['message' => 'Siswa tidak ditemukan.'], 404);
+        }
+
+        $user = $request->user();
+        $subjectFilter = null;
+        if ($user && $user->role === 'guru') {
+            $assignedClasses = TeacherScope::getAssignedClasses($user);
+            if ($assignedClasses !== null && !in_array($student->class_name, $assignedClasses)) {
+                return response()->json(['message' => 'Anda tidak memiliki akses ke siswa ini.'], 403);
+            }
+            $subjectFilter = TeacherScope::getAssignedSubjects($user);
+        }
+
+        $blocks = [];
+        $overallSum = 0;
+        $overallCount = 0;
+
+        foreach (\App\Models\Semester::orderBy('start_date')->get() as $semester) {
+            $gradeQuery = \App\Models\SubjectGrade::where('student_id', $student->id)
+                ->where('semester_id', $semester->id);
+            if ($subjectFilter !== null) {
+                $gradeQuery->whereIn('subject_name', $subjectFilter);
+            }
+            $grades = $gradeQuery->orderBy('subject_name')->get();
+
+            $decision = \App\Models\PromotionDecision::where('student_id', $student->id)
+                ->where('semester_id', $semester->id)->first();
+
+            $attendanceRows = Attendance::where('student_id', $student->id)
+                ->where(function ($q) use ($semester) {
+                    $q->where('semester_id', $semester->id)
+                      ->orWhere(function ($q2) use ($semester) {
+                          $q2->whereNull('semester_id')
+                             ->whereBetween('date', [$semester->start_date->format('Y-m-d'), $semester->end_date->format('Y-m-d')]);
+                      });
+                })->get();
+
+            $counts = ['Hadir' => 0, 'Terlambat' => 0, 'Sakit' => 0, 'Izin' => 0, 'Alpa' => 0];
+            foreach ($attendanceRows as $row) {
+                if (isset($counts[$row->status])) {
+                    $counts[$row->status]++;
+                }
+            }
+            $attendanceTotal = array_sum($counts);
+
+            if ($grades->isEmpty() && !$decision && $attendanceTotal === 0) {
+                continue;
+            }
+
+            foreach ($grades as $g) {
+                if ($g->final_total !== null) {
+                    $overallSum += (float) $g->final_total;
+                    $overallCount++;
+                }
+            }
+
+            $blocks[] = [
+                'semester' => array_merge($semester->toArray(), ['label' => $semester->label()]),
+                'grades' => $grades,
+                'decision' => $decision,
+                'attendance' => [
+                    'hadir' => $counts['Hadir'],
+                    'terlambat' => $counts['Terlambat'],
+                    'sakit' => $counts['Sakit'],
+                    'izin' => $counts['Izin'],
+                    'alpa' => $counts['Alpa'],
+                ],
+            ];
+        }
+
+        return response()->json([
+            'student' => $student,
+            'semesters' => $blocks,
+            'overall_average' => $overallCount ? round($overallSum / $overallCount, 1) : null,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $user = $request->user();
