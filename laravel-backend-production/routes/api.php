@@ -97,9 +97,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
     });
 
-    // Guru Piket routes (Admin & Kepsek)
+    // Guru Piket routes: membaca daftar boleh semua peran (tab piket
+    // di halaman Jadwal bersifat lihat-saja untuk guru); mengubah
+    // data hanya Admin & Kepsek.
+    Route::get('/guru-piket', [GuruPiketController::class, 'index']);
     Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
-        Route::get('/guru-piket', [GuruPiketController::class, 'index']);
         Route::post('/guru-piket', [GuruPiketController::class, 'store']);
         Route::delete('/guru-piket/{id}', [GuruPiketController::class, 'destroy']);
     });
