@@ -285,7 +285,7 @@ export default function SchedulePage({ user, notify }) {
                   <header className="px-5 py-4 bg-plum/5 border-b border-slate-100 flex items-center justify-between">
                     <h3 className="font-extrabold text-slate-900 text-sm">{day}</h3>
                     <span className="px-2.5 py-1 bg-plum/10 text-plum rounded-full text-[10px] font-extrabold">
-                      {isGuru ? `${daySchedules.length} pelajaran` : `${classGroups.length} kelas`}
+                      {isGuru ? daySchedules.length : dayRows.length} pelajaran
                     </span>
                   </header>
                   {daySchedules.length === 0 ? (
