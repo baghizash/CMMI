@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import NotificationToast from './components/NotificationToast';
+import { ConfirmDialogHost } from './components/ConfirmDialog';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ScannerPage from './pages/ScannerPage';
@@ -130,6 +131,7 @@ function AppContent() {
       </main>
 
       <NotificationToast notification={notification} />
+      <ConfirmDialogHost />
     </div>
   );
 }
