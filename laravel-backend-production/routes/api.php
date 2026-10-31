@@ -51,7 +51,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/students/promote-class', [StudentController::class, 'promoteClass']);
         Route::put('/students/{id}', [StudentController::class, 'update']);
         Route::delete('/students/{id}', [StudentController::class, 'destroy']);
-        Route::post('/students/seed-demo', [StudentController::class, 'seedDemo']);
     });
 
     // Daily Attendance routes — Absen Hadir & Pulang (Admin, Kepsek & Guru Piket only)
