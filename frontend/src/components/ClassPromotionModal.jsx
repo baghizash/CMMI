@@ -5,7 +5,7 @@ import { CLASSES } from '../constants';
 
 export default function ClassPromotionModal({ isOpen, onClose, onPromotionSuccess, notify }) {
   const [fromClass, setFromClass] = useState(CLASSES[0]);
-  const [toClass, setToClass] = useState(CLASSES[1] || 'XI IPA 1');
+  const [toClass, setToClass] = useState(CLASSES[1] || '1B');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
