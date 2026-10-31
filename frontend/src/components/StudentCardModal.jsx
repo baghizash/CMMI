@@ -97,9 +97,15 @@ export default function StudentCardModal({ student, onClose }) {
                 <div>
                   <dt className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Status</dt>
                   <dd>
-                    <span className="inline-flex px-2 py-0.5 rounded-full bg-hadir/10 text-hadir text-[11px] font-extrabold">
-                      Aktif
-                    </span>
+                    {student.status === 'alumni' ? (
+                      <span className="inline-flex px-2 py-0.5 rounded-full bg-plum/10 text-plum text-[11px] font-extrabold">
+                        Alumni
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-0.5 rounded-full bg-hadir/10 text-hadir text-[11px] font-extrabold">
+                        Aktif
+                      </span>
+                    )}
                   </dd>
                 </div>
               </div>
