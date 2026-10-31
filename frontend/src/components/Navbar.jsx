@@ -27,31 +27,31 @@ export default function Navbar({ user, onLogout, notify }) {
   return (
     <>
       <header className="bg-white/80 backdrop-blur-xl backdrop-saturate-150 border-b border-[rgba(30,39,50,0.08)] sticky top-0 z-40 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-[68px]">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-3 h-[68px]">
             {/* Logo: a real link, keyboard-operable (audit fix) */}
             <Link
               to="/dashboard"
               aria-label="CMMI Absensi, ke Dashboard"
-              className="flex items-center gap-3 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine focus-visible:ring-offset-2"
+              className="flex items-center gap-3 shrink-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine focus-visible:ring-offset-2"
             >
               <div className="w-11 h-11 grid place-items-center bg-marine rounded-[13px] text-white shadow-tactile">
                 <GraduationCap className="w-5 h-5" />
               </div>
               <div>
                 <h1 className="font-extrabold text-ink text-lg leading-tight tracking-tight">CMMI Absensi</h1>
-                <p className="text-[11px] font-semibold text-ink-soft tracking-wider uppercase">Sistem Presensi Sekolah</p>
+                <p className="hidden min-[1500px]:block text-[11px] font-semibold text-ink-soft tracking-wider uppercase">Sistem Presensi Sekolah</p>
               </div>
             </Link>
 
             {/* Nav Tabs */}
-            <nav className="hidden md:flex items-center gap-1 bg-[#EFEAE0]/90 p-1 rounded-full border border-[rgba(30,39,50,0.05)]" aria-label="Menu utama">
+            <nav className="hidden md:flex flex-nowrap items-center gap-1 bg-[#EFEAE0]/90 p-1 rounded-full border border-[rgba(30,39,50,0.05)] overflow-x-auto no-scrollbar min-w-0" aria-label="Menu utama">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   aria-current={isActive(item.path) ? 'page' : undefined}
-                  className={`group flex items-center gap-2 px-4 h-11 rounded-full text-[13px] font-semibold transition-all duration-200 ${
+                  className={`group flex items-center gap-2 px-3 h-11 shrink-0 whitespace-nowrap rounded-full text-xs font-semibold transition-all duration-200 ${
                     isActive(item.path)
                       ? 'bg-marine text-white shadow-tactile font-bold'
                       : 'text-ink-soft hover:text-ink hover:bg-white/80'
@@ -65,8 +65,8 @@ export default function Navbar({ user, onLogout, notify }) {
 
             {/* User Profile Controls */}
             {user && (
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:flex flex-col items-end">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="hidden min-[1500px]:flex flex-col items-end">
                   <span className="text-[13px] font-bold text-ink">{user.name || user.username}</span>
                   <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-marine-tint text-marine-deep uppercase tracking-wider">
                     {user.role}
