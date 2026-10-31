@@ -3,6 +3,8 @@ import {
   Clock, Download, Filter, Plus, Trash2, Calendar, FileSpreadsheet, CheckCircle2, AlertCircle, BookOpen, UserCheck
 } from 'lucide-react';
 import * as api from '../services/api';
+import PaginationBar from '../components/PaginationBar';
+import usePagination from '../hooks/usePagination';
 import { CLASSES } from '../constants';
 
 export default function RecapPage({ user, notify }) {
@@ -13,7 +15,9 @@ export default function RecapPage({ user, notify }) {
   const [statusFilter, setStatusFilter] = useState('Semua Status');
 
   const [attendance, setAttendance] = useState([]);
+  const dailyPager = usePagination(attendance, 5, [selectedDate, selectedClass, statusFilter, recapTab]);
   const [subjectAttendance, setSubjectAttendance] = useState([]);
+  const subjectPager = usePagination(subjectAttendance, 5, [selectedDate, selectedClass, recapTab]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -221,7 +225,7 @@ export default function RecapPage({ user, notify }) {
                     </td>
                   </tr>
                 ) : (
-                  attendance.map((row) => (
+                  dailyPager.pageItems.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="px-6 py-4 font-mono font-bold text-slate-700">{row.time}</td>
                       <td className="px-6 py-4 font-mono text-slate-600">{row.nis}</td>
@@ -258,6 +262,9 @@ export default function RecapPage({ user, notify }) {
               </tbody>
             </table>
           </div>
+          {attendance.length > 0 && (
+            <PaginationBar page={dailyPager.page} totalPages={dailyPager.totalPages} total={dailyPager.total} perPage={dailyPager.perPage} onPageChange={dailyPager.setPage} />
+          )}
         </div>
       )}
 
@@ -290,7 +297,7 @@ export default function RecapPage({ user, notify }) {
                     </td>
                   </tr>
                 ) : (
-                  subjectAttendance.map((row) => (
+                  subjectPager.pageItems.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="px-6 py-4 font-mono font-bold text-slate-700">{row.time}</td>
                       <td className="px-6 py-4 font-mono text-slate-600">{row.nis}</td>
@@ -310,6 +317,9 @@ export default function RecapPage({ user, notify }) {
               </tbody>
             </table>
           </div>
+          {subjectAttendance.length > 0 && (
+            <PaginationBar page={subjectPager.page} totalPages={subjectPager.totalPages} total={subjectPager.total} perPage={subjectPager.perPage} onPageChange={subjectPager.setPage} />
+          )}
         </div>
       )}
 
