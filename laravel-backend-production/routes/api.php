@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Students routes — index & store are scoped in controller for guru
     Route::get('/students', [StudentController::class, 'index']);
+    Route::get('/students/{id}', [StudentController::class, 'show']);
     Route::post('/students', [StudentController::class, 'store']);
 
     // Student management routes (Admin, Kepsek & Guru Piket only)
