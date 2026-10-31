@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, Plus, Search, Trash2, Printer, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye, BookOpen
+  Users, Plus, Search, Trash2, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye, BookOpen
 } from 'lucide-react';
 import * as api from '../services/api';
 import { confirmDialog } from '../components/ConfirmDialog';
@@ -14,7 +14,6 @@ const BIODATA_FIELDS = [
   'mother_job', 'guardian_name', 'parent_phone', 'previous_school', 'enrollment_year',
 ];
 import ImportStudentsModal from '../components/ImportStudentsModal';
-import StudentPrintGrid from '../components/StudentPrintGrid';
 import ClassPromotionModal from '../components/ClassPromotionModal';
 import StudentCardModal from '../components/StudentCardModal';
 import PaginationBar from '../components/PaginationBar';
@@ -31,7 +30,6 @@ export default function StudentsPage({ notify }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
-  const [showBatchPrint, setShowBatchPrint] = useState(false);
   const [cardStudent, setCardStudent] = useState(null);
   const studentPager = usePagination(students, 5, [selectedClass, searchQuery]);
 
@@ -99,14 +97,6 @@ export default function StudentsPage({ notify }) {
             className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
           >
             <FileSpreadsheet className="w-4 h-4" /> Import Excel/CSV
-          </button>
-
-          <button
-            onClick={() => setShowBatchPrint(true)}
-            disabled={students.length === 0}
-            className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            <Printer className="w-4 h-4" /> Cetak QR Kelas
           </button>
 
           <button
@@ -349,14 +339,6 @@ export default function StudentsPage({ notify }) {
         notify={notify}
       />
 
-      {/* Batch Print Component */}
-      {showBatchPrint && (
-        <StudentPrintGrid
-          students={students}
-          className={selectedClass}
-          onClose={() => setShowBatchPrint(false)}
-        />
-      )}
     </div>
   );
 }
