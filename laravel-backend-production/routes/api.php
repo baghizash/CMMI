@@ -13,6 +13,9 @@ use App\Http\Controllers\Api\ExportController;
 
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\TeacherAssignmentController;
+use App\Http\Controllers\Api\SemesterController;
+use App\Http\Controllers\Api\HomeroomTeacherController;
+use App\Http\Controllers\Api\PromotionController;
 use App\Http\Middleware\CheckRole;
 
 // Public routes - CSRF exempt
@@ -35,7 +38,27 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teacher-assignments', [TeacherAssignmentController::class, 'index']);
         Route::post('/teacher-assignments', [TeacherAssignmentController::class, 'store']);
         Route::delete('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'destroy']);
+
+        // Homeroom (wali kelas) assignments management
+        Route::get('/homeroom-teachers', [HomeroomTeacherController::class, 'index']);
+        Route::post('/homeroom-teachers', [HomeroomTeacherController::class, 'store']);
+        Route::delete('/homeroom-teachers/{id}', [HomeroomTeacherController::class, 'destroy']);
+
+        // Semester rollover (tombol Semester Baru) + kemajuan keputusan
+        Route::post('/semesters/rollover', [SemesterController::class, 'rollover']);
+        Route::get('/promotions/status', [PromotionController::class, 'status']);
     });
+
+    // Semesters (semua peran boleh membaca)
+    Route::get('/semesters', [SemesterController::class, 'index']);
+    Route::get('/semesters/active', [SemesterController::class, 'active']);
+
+    // Keputusan naik kelas (wali kelas; diperiksa di controller)
+    Route::get('/promotions/my-classes', [PromotionController::class, 'myClasses']);
+    Route::post('/promotions/decide', [PromotionController::class, 'decide']);
+
+    // Transkrip per semester
+    Route::get('/students/{id}/transcript', [StudentController::class, 'transcript']);
 
     // Teacher scope
     Route::get('/teacher-assignments/my-scope', [TeacherAssignmentController::class, 'myScope']);
