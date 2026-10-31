@@ -90,7 +90,8 @@ class TeacherAssignmentController extends Controller
                 'classes' => [],
                 'subjects' => [],
                 'assignments' => [],
-                'homeroom_classes' => []
+                'homeroom_classes' => [],
+                'is_piket_today' => false
             ]);
         }
 
@@ -108,12 +109,20 @@ class TeacherAssignmentController extends Controller
             $homeroomClasses = \App\Models\HomeroomTeacher::classesOf($user);
         }
 
+        $isPiketToday = false;
+        if (\Illuminate\Support\Facades\Schema::hasTable('guru_piket')) {
+            $isPiketToday = \App\Models\GuruPiket::where('date', now()->format('Y-m-d'))
+                ->where('teacher_name', $user->name)
+                ->exists();
+        }
+
         return response()->json([
             'is_admin' => false,
             'classes' => $classes,
             'subjects' => $subjects,
             'assignments' => $assignments,
-            'homeroom_classes' => $homeroomClasses
+            'homeroom_classes' => $homeroomClasses,
+            'is_piket_today' => $isPiketToday
         ]);
     }
 }
