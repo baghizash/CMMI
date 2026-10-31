@@ -8,7 +8,7 @@ import { CLASSES } from '../constants';
 // di Data Siswa). Isinya SATU kartu data diri lengkap yang dapat diubah
 // oleh admin (dan kepsek / guru piket, mengikuti izin update di backend).
 
-const EDIT_ROLES = ['admin', 'kepsek', 'guru_piket'];
+const EDIT_ROLES = ['admin', 'kepsek'];
 
 const RELIGIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu', 'Lainnya'];
 
