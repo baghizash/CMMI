@@ -16,6 +16,8 @@ export default function SchedulePage({ user, notify }) {
   const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'piket'
   const isGuru = user?.role === 'guru';
   const [teacherSubjects, setTeacherSubjects] = useState([]);
+  const [teacherUsers, setTeacherUsers] = useState([]);
+  const [showTeacherSuggest, setShowTeacherSuggest] = useState(false);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [showAddPiketModal, setShowAddPiketModal] = useState(false);
 
@@ -56,6 +58,21 @@ export default function SchedulePage({ user, notify }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Daftar user guru untuk kotak kombo nama guru di form tambah jadwal
+  useEffect(() => {
+    if (!isGuru) {
+      api
+        .getUsers()
+        .then((res) => {
+          const list = (res.data.data || [])
+            .filter((u) => u.role === 'guru' || u.role === 'guru_piket')
+            .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+          setTeacherUsers(list);
+        })
+        .catch(() => setTeacherUsers([]));
+    }
+  }, [user]);
 
   // Guru hanya melihat jadwal mata pelajaran yang ia ampu
   useEffect(() => {
@@ -323,14 +340,56 @@ export default function SchedulePage({ user, notify }) {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Nama Guru Pengajar</label>
-                <input
-                  type="text"
-                  required
-                  value={newSchedule.teacher_name}
-                  onChange={(e) => setNewSchedule({ ...newSchedule, teacher_name: e.target.value })}
-                  placeholder="Nama Guru"
-                  className="w-full px-3 py-2 border rounded-2xl text-xs"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={newSchedule.teacher_name}
+                    onChange={(e) => {
+                      setNewSchedule({ ...newSchedule, teacher_name: e.target.value });
+                      setShowTeacherSuggest(true);
+                    }}
+                    onFocus={() => setShowTeacherSuggest(true)}
+                    onBlur={() => setTimeout(() => setShowTeacherSuggest(false), 150)}
+                    placeholder="Ketik nama guru..."
+                    autoComplete="off"
+                    role="combobox"
+                    aria-expanded={showTeacherSuggest}
+                    aria-label="Nama Guru Pengajar"
+                    className="w-full px-3 py-2 border rounded-2xl text-xs"
+                  />
+                  {showTeacherSuggest &&
+                    (() => {
+                      const q = newSchedule.teacher_name.trim().toLowerCase();
+                      const matches = teacherUsers
+                        .filter((u) => q === '' || String(u.name).toLowerCase().startsWith(q))
+                        .slice(0, 8);
+                      if (matches.length === 0) return null;
+                      return (
+                        <ul className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-auto bg-white border border-slate-200 rounded-2xl shadow-lg py-1" role="listbox">
+                          {matches.map((u) => (
+                            <li key={u.id}>
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected="false"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setNewSchedule({ ...newSchedule, teacher_name: u.name });
+                                  setShowTeacherSuggest(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-indigo-50 flex items-center justify-between gap-2"
+                              >
+                                <span>{u.name}</span>
+                                <span className="text-[10px] font-bold text-slate-400">{u.role === 'guru_piket' ? 'Guru Piket' : 'Guru'}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Ketik untuk mencari guru terdaftar, atau tulis nama secara manual.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
