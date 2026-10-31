@@ -43,3 +43,13 @@ Password semua akun guru: **guru123**
 | Budi Santoso | guru.budi | guru123 | PJOK | Semua kelas (1A sampai 6B) |
 | Ani Kusuma | guru.ani | guru123 | Bahasa Inggris | 3A, 3B, 4A, 4B, 5A, 5B, 6A, 6B |
 | Tuti Melati | guru.tuti | guru123 | Seni Budaya | Semua kelas (1A sampai 6B) |
+
+## Penugasan Wali Kelas
+
+Setiap guru kelas di atas juga adalah **wali kelas** untuk kelasnya sendiri (akun yang sama, bukan akun terpisah):
+guru.siti wali kelas 1A, guru.dewi 1B, guru.agus 2A, guru.rina 2B, guru.bambang 3A, guru.maya 3B,
+guru.joko 4A, guru.fitri 4B, guru.andi 5A, guru.sri 5B, guru.dedi 6A, guru.lilis 6B.
+Guru spesialis (guru.budi, guru.ani, guru.tuti) tidak menjadi wali kelas.
+Sebagai wali kelas, mereka mendapat tab **Keputusan Naik Kelas** di Ruang Kerja Guru untuk memutuskan
+naik/tinggal kelas per siswa. Penugasan ini terisi otomatis saat GuruUsersSeeder dijalankan ulang,
+dan bisa diubah admin lewat Jadwal & Penugasan, tab Penugasan Wali Kelas.
