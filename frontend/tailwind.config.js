@@ -79,6 +79,14 @@ module.exports = {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'translateY(0)' }
         },
+        'pop-in': {
+          from: { opacity: '0', transform: 'scale(0.95) translateY(10px)' },
+          to: { opacity: '1', transform: 'scale(1) translateY(0)' }
+        },
+        'backdrop-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' }
+        },
         'accordion-down': {
           from: {
             height: '0'
@@ -98,6 +106,8 @@ module.exports = {
       },
       animation: {
         'fade-in': 'fade-in 0.35s cubic-bezier(.32,.72,0,1) both',
+        'pop-in': 'pop-in 0.28s cubic-bezier(.32,.72,0,1) both',
+        'backdrop-in': 'backdrop-in 0.22s ease-out both',
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out'
       }
