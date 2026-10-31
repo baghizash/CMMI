@@ -1,13 +1,40 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  QrCode, LogOut, GraduationCap, Clock, Calendar, KeyRound, UserCog, LayoutDashboard, BookOpen, UserCheck
+  QrCode, LogOut, GraduationCap, Clock, Calendar, KeyRound, UserCog, LayoutDashboard, BookOpen, UserCheck, UserRound
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 
 export default function Navbar({ user, onLogout, notify }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const onClickOutside = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) setProfileMenuOpen(false);
+    };
+    const onEsc = (e) => {
+      if (e.key === 'Escape') setProfileMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [profileMenuOpen]);
+
+  const initials = (user?.name || user?.username || '?')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
 
   const isActive = (path) => location.pathname === path;
 
@@ -68,13 +95,6 @@ export default function Navbar({ user, onLogout, notify }) {
             {/* User Profile Controls */}
             {user && (
               <div className="flex items-center gap-3 shrink-0">
-                <div className="hidden min-[1500px]:flex flex-col items-end">
-                  <span className="text-[13px] font-bold text-ink">{user.name || user.username}</span>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-marine-tint text-marine-deep uppercase tracking-wider">
-                    {user.role}
-                  </span>
-                </div>
-
                 <button
                   onClick={() => setShowPasswordModal(true)}
                   title="Ganti Password"
@@ -84,14 +104,49 @@ export default function Navbar({ user, onLogout, notify }) {
                   <KeyRound className="w-[18px] h-[18px]" />
                 </button>
 
-                <button
-                  onClick={onLogout}
-                  title="Logout"
-                  aria-label="Logout"
-                  className="h-11 w-11 grid place-items-center text-ink-soft hover:text-alpa hover:bg-alpa-tint rounded-full transition-all duration-200 border border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine"
-                >
-                  <LogOut className="w-[18px] h-[18px]" />
-                </button>
+                {/* Profil: foto + nama di bawahnya; ditekan membuka menu Profil & Logout */}
+                <div className="relative" ref={profileMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setProfileMenuOpen((v) => !v)}
+                    aria-haspopup="menu"
+                    aria-expanded={profileMenuOpen}
+                    title={user.name || user.username}
+                    className="flex flex-col items-center gap-1 px-1 py-1 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine"
+                  >
+                    {user.photo ? (
+                      <img src={user.photo} alt="" className="w-9 h-9 rounded-full object-cover border border-[#E7E0D0] shadow-soft" />
+                    ) : (
+                      <span className="w-9 h-9 rounded-full bg-marine text-white grid place-items-center text-[11px] font-extrabold shadow-soft">{initials}</span>
+                    )}
+                    <span className="text-[10px] font-bold text-ink leading-none max-w-[110px] truncate">{user.name || user.username}</span>
+                  </button>
+
+                  {profileMenuOpen && (
+                    <div role="menu" className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200/80 rounded-2xl shadow-xl p-1.5 z-50 animate-pop-in">
+                      <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                        <p className="text-xs font-extrabold text-ink truncate">{user.name || user.username}</p>
+                        <p className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">{user.role}</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setProfileMenuOpen(false); navigate('/profile'); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-ink hover:bg-marine-tint transition-colors"
+                      >
+                        <UserRound className="w-4 h-4 text-marine" /> Profil
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setProfileMenuOpen(false); onLogout(); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-alpa hover:bg-alpa-tint transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" /> Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
