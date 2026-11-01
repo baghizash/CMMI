@@ -6,6 +6,7 @@ import * as api from '../services/api';
 import { confirmDialog } from '../components/ConfirmDialog';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
+import SlidingTabBar from '../components/SlidingTabBar';
 import { CLASSES } from '../constants';
 
 export default function RecapPage({ user, notify }) {
@@ -126,30 +127,18 @@ export default function RecapPage({ user, notify }) {
       {/* Tabs & Filter Bar */}
       <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Tab Selection */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60 w-fit">
-          {!isGuruMapel && (
-            <button
-              onClick={() => setRecapTab('daily')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                recapTab === 'daily'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-200/50'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5 text-emerald-600" /> Absensi Harian Gerbang
-            </button>
-          )}
-          <button
-            onClick={() => setRecapTab('subject')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              recapTab === 'subject'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:bg-slate-200/50'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> Absensi Mata Pelajaran
-          </button>
-        </div>
+        <SlidingTabBar
+          ariaLabel="Jenis rekap absensi"
+          light
+          activeKey={recapTab}
+          onChange={setRecapTab}
+          items={[
+            ...(!isGuruMapel
+              ? [{ key: 'daily', label: 'Absensi Harian Gerbang', icon: <UserCheck className="w-3.5 h-3.5 text-emerald-600" />, color: '#FFFFFF' }]
+              : []),
+            { key: 'subject', label: 'Absensi Mata Pelajaran', icon: <BookOpen className="w-3.5 h-3.5 text-indigo-600" />, color: '#FFFFFF' },
+          ]}
+        />
 
         {/* Filter Inputs */}
         <div className="flex flex-wrap items-center gap-3">
