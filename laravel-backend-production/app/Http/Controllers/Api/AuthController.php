@@ -31,7 +31,8 @@ class AuthController extends Controller
             'success' => true,
             'token' => $token,
             'role' => $user->role,
-            'name' => $user->name
+            'name' => $user->name,
+            'photo' => $user->photo
         ]);
     }
 
@@ -48,6 +49,36 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json($request->user());
+    }
+
+    // Perbarui profil sendiri: nama lengkap dan foto (data URI kecil).
+    public function updateProfile(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'photo' => 'nullable|string|max:1200000',
+        ]);
+
+        if ($request->filled('photo') && !str_starts_with($request->photo, 'data:image/')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Format foto tidak dikenal.'
+            ], 422);
+        }
+
+        $user = $request->user();
+        $user->name = $request->name;
+        if ($request->has('photo')) {
+            $user->photo = $request->photo;
+        }
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui.',
+            'name' => $user->name,
+            'photo' => $user->photo
+        ]);
     }
 
     public function changePassword(Request $request)
