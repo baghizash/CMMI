@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { QrCode, Camera, Search, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import * as api from '../services/api';
+import SlidingTabBar from '../components/SlidingTabBar';
 import { SUBJECTS } from '../constants';
 
 export default function ScannerPage({ user, notify }) {
   const isGuruMapel = user?.role === 'guru';
+  const [piketToday, setPiketToday] = useState(false);
+  const canDaily = !isGuruMapel || piketToday;
   const [scanMode, setScanMode] = useState(isGuruMapel ? 'mapel' : 'masuk'); // masuk | pulang | mapel
   const [manualCodeInput, setManualCodeInput] = useState('');
   const [teacherSubjects, setTeacherSubjects] = useState([]);
@@ -28,6 +31,10 @@ export default function ScannerPage({ user, notify }) {
       setScanMode('mapel');
       api.getMyTeacherScope()
         .then((res) => {
+          if (res.data?.is_piket_today) {
+            setPiketToday(true);
+            setScanMode('masuk');
+          }
           if (res.data?.subjects?.length > 0) {
             setTeacherSubjects(res.data.subjects);
             setSubjectScanConfig((prev) => ({
@@ -136,40 +143,29 @@ export default function ScannerPage({ user, notify }) {
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Pemindai QR Code Absensi</h2>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">Absen Masuk, Pulang, atau Absensi Mata Pelajaran</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">
+            {isGuruMapel
+              ? piketToday
+                ? 'Hari ini Anda bertugas piket: Absen Masuk, Pulang, dan Mapel tersedia'
+                : 'Absensi mata pelajaran untuk kelas yang Anda ampu'
+              : 'Absen Masuk, Pulang, atau Absensi Mata Pelajaran'}
+          </p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60">
-          {!isGuruMapel && (
-            <>
-              <button
-                onClick={() => { setScanMode('masuk'); stopScanner(); }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  scanMode === 'masuk' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-slate-600 hover:bg-slate-200/50'
-                }`}
-              >
-                Absen Masuk
-              </button>
-              <button
-                onClick={() => { setScanMode('pulang'); stopScanner(); }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  scanMode === 'pulang' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20' : 'text-slate-600 hover:bg-slate-200/50'
-                }`}
-              >
-                Absen Pulang
-              </button>
-            </>
-          )}
-
-          {isGuruMapel && (
-            <button
-              onClick={() => { setScanMode('mapel'); stopScanner(); }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/20`}
-            >
-              Absen Mapel
-            </button>
-          )}
-        </div>
+        <SlidingTabBar
+          ariaLabel="Mode absensi"
+          activeKey={scanMode}
+          onChange={(key) => { setScanMode(key); stopScanner(); }}
+          items={[
+            ...(canDaily
+              ? [
+                  { key: 'masuk', label: 'Absen Masuk', color: '#059669' },
+                  { key: 'pulang', label: 'Absen Pulang', color: '#D97706' },
+                ]
+              : []),
+            ...(isGuruMapel ? [{ key: 'mapel', label: 'Absen Mapel', color: '#4F46E5' }] : []),
+          ]}
+        />
       </div>
 
       {/* Config for Subject Scan */}

@@ -1,31 +1,38 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Users, Plus, Search, Trash2, Printer, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye, BookOpen
+  Users, Plus, Search, Trash2, FileSpreadsheet, GraduationCap, ArrowRight, X, Eye, BookOpen
 } from 'lucide-react';
 import * as api from '../services/api';
+import { confirmDialog } from '../components/ConfirmDialog';
 import { CLASSES } from '../constants';
+
+// Kolom biodata lengkap dari migrasi halaman detail; dipakai untuk lencana status kelengkapan.
+const BIODATA_FIELDS = [
+  'nisn', 'nik', 'no_kk', 'birth_place', 'birth_date', 'religion', 'address',
+  'child_order', 'siblings_count', 'father_name', 'father_job', 'mother_name',
+  'mother_job', 'guardian_name', 'parent_phone', 'previous_school', 'enrollment_year',
+];
 import ImportStudentsModal from '../components/ImportStudentsModal';
-import StudentPrintGrid from '../components/StudentPrintGrid';
 import ClassPromotionModal from '../components/ClassPromotionModal';
 import StudentCardModal from '../components/StudentCardModal';
-import StudentGradesModal from '../components/StudentGradesModal';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 
 export default function StudentsPage({ notify }) {
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [selectedClass, setSelectedClass] = useState('Semua Kelas');
+  const [selectedStatus, setSelectedStatus] = useState('aktif');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
-  const [showBatchPrint, setShowBatchPrint] = useState(false);
   const [cardStudent, setCardStudent] = useState(null);
-  const [gradesStudent, setGradesStudent] = useState(null);
-  const studentPager = usePagination(students, 5, [selectedClass, searchQuery]);
+  const studentPager = usePagination(students, 5, [selectedClass, searchQuery, selectedStatus]);
 
   const [newStudent, setNewStudent] = useState({
     nis: '',
@@ -38,7 +45,7 @@ export default function StudentsPage({ notify }) {
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const res = await api.getStudents({ class_name: selectedClass, search: searchQuery });
+      const res = await api.getStudents({ class_name: selectedClass, search: searchQuery, status: selectedStatus });
       setStudents(res.data || []);
     } catch (e) {
       console.error('Failed fetching students', e);
@@ -50,7 +57,7 @@ export default function StudentsPage({ notify }) {
 
   useEffect(() => {
     fetchStudents();
-  }, [selectedClass, searchQuery]);
+  }, [selectedClass, searchQuery, selectedStatus]);
 
   const handleAddStudent = async (e) => {
     e.preventDefault();
@@ -66,24 +73,13 @@ export default function StudentsPage({ notify }) {
   };
 
   const handleDeleteStudent = async (id, name) => {
-    if (!window.confirm(`Hapus siswa ${name}? Data presensi terkait juga akan terhapus.`)) return;
+    if (!(await confirmDialog({ message: `Hapus siswa ${name}? Data presensi terkait juga akan terhapus.`, confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteStudent(id);
       notify && notify('success', 'Siswa berhasil dihapus.');
       fetchStudents();
     } catch (e) {
       notify && notify('error', 'Gagal menghapus siswa.');
-    }
-  };
-
-  const handleSeedDemo = async () => {
-    if (!window.confirm('Reset dan generate 12 data siswa demo? Data absensi lama akan dikosongkan.')) return;
-    try {
-      await api.seedDemo();
-      notify && notify('success', 'Berhasil generate data siswa demo.');
-      fetchStudents();
-    } catch (e) {
-      notify && notify('error', 'Gagal seed data demo.');
     }
   };
 
@@ -105,14 +101,6 @@ export default function StudentsPage({ notify }) {
           </button>
 
           <button
-            onClick={() => setShowBatchPrint(true)}
-            disabled={students.length === 0}
-            className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            <Printer className="w-4 h-4" /> Cetak QR Kelas
-          </button>
-
-          <button
             onClick={() => setShowPromotionModal(true)}
             className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
           >
@@ -126,13 +114,6 @@ export default function StudentsPage({ notify }) {
             <Plus className="w-4 h-4" /> Tambah Siswa
           </button>
 
-          <button
-            onClick={handleSeedDemo}
-            className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-2xl transition-colors"
-            title="Generate Data Demo"
-          >
-            Seed Demo
-          </button>
         </div>
       </div>
 
@@ -162,6 +143,19 @@ export default function StudentsPage({ notify }) {
             ))}
           </select>
         </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Status:</span>
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <option value="aktif">Aktif</option>
+            <option value="alumni">Alumni</option>
+            <option value="semua">Semua</option>
+          </select>
+        </div>
       </div>
 
       {/* Students Table */}
@@ -170,18 +164,17 @@ export default function StudentsPage({ notify }) {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">NIS</th>
-                <th className="px-6 py-4">Nama Siswa</th>
-                <th className="px-6 py-4">Kelas</th>
-                <th className="px-6 py-4">L/P</th>
-                <th className="px-6 py-4">QR Code</th>
+                <th className="px-6 py-4 w-[12%]">NIS</th>
+                <th className="px-6 py-4 w-[32%]">Nama Siswa</th>
+                <th className="px-6 py-4 w-[16%]">Kelas</th>
+                <th className="px-6 py-4 w-[18%]">Biodata</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">
+                  <td colSpan={5} className="text-center py-12 text-slate-400 font-medium">
                     {loading ? 'Memuat data siswa...' : 'Tidak ada data siswa ditemukan.'}
                   </td>
                 </tr>
@@ -192,7 +185,7 @@ export default function StudentsPage({ notify }) {
                     <td className="px-6 py-4">
                         <button
                           type="button"
-                          onClick={() => setCardStudent(st)}
+                          onClick={() => navigate(`/students/${st.id}`)}
                           className="font-bold text-slate-900 hover:text-marine-deep underline-offset-2 hover:underline text-left"
                         >
                           {st.name}
@@ -203,8 +196,29 @@ export default function StudentsPage({ notify }) {
                         {st.class_name}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{st.gender}</td>
-                    <td className="px-6 py-4 font-mono text-slate-500 text-[11px]">{st.qr_code}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const filled = BIODATA_FIELDS.filter((f) => st[f] !== null && st[f] !== undefined && st[f] !== '').length;
+                        const total = BIODATA_FIELDS.length;
+                        const badge =
+                          filled === total
+                            ? 'bg-hadir/10 text-hadir'
+                            : filled === 0
+                              ? 'bg-slate-100 text-slate-500'
+                              : 'bg-butter/30 text-telat';
+                        const label = filled === total ? 'Lengkap' : filled === 0 ? 'Belum diisi' : `${filled}/${total} terisi`;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/students/${st.id}`)}
+                            title="Buka halaman detail untuk melengkapi biodata"
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold transition hover:brightness-95 ${badge}`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })()}
+                    </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button
                         onClick={() => setCardStudent(st)}
@@ -213,7 +227,7 @@ export default function StudentsPage({ notify }) {
                         <Eye className="w-3.5 h-3.5" /> Detail
                       </button>
                       <button
-                        onClick={() => setGradesStudent(st)}
+                        onClick={() => navigate(`/students/${st.id}/nilai`)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-tang/10 hover:bg-tang/15 text-tang-dark rounded-full font-bold text-[11px] transition-colors"
                       >
                         <BookOpen className="w-3.5 h-3.5" /> Nilai
@@ -239,8 +253,8 @@ export default function StudentsPage({ notify }) {
 
       {/* Add Student Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-backdrop-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-pop-in">
             <button
               onClick={() => setShowAddModal(false)}
               className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600"
@@ -330,9 +344,6 @@ export default function StudentsPage({ notify }) {
       )}
 
       {/* Grade detail popout: separate window */}
-      {gradesStudent && (
-        <StudentGradesModal student={gradesStudent} onClose={() => setGradesStudent(null)} />
-      )}
 
       {/* Class Promotion Modal */}
       <ClassPromotionModal
@@ -342,14 +353,6 @@ export default function StudentsPage({ notify }) {
         notify={notify}
       />
 
-      {/* Batch Print Component */}
-      {showBatchPrint && (
-        <StudentPrintGrid
-          students={students}
-          className={selectedClass}
-          onClose={() => setShowBatchPrint(false)}
-        />
-      )}
     </div>
   );
 }

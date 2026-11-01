@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, GraduationCap } from 'lucide-react';
+import { X, GraduationCap, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 function initials(name) {
@@ -47,7 +47,7 @@ export default function StudentCardModal({ student, onClose }) {
 
         <section
           aria-label="Kartu identitas siswa"
-          className="bg-white rounded-[28px] border border-[rgba(30,39,50,0.07)] shadow-tile overflow-hidden"
+          className="cmmi-print-area bg-white rounded-[28px] border border-[rgba(30,39,50,0.07)] shadow-tile overflow-hidden"
         >
           <div className="bg-marine px-6 py-3.5 flex items-center justify-between">
             <span className="inline-flex items-center gap-2 text-white text-xs font-extrabold tracking-widest uppercase">
@@ -97,9 +97,15 @@ export default function StudentCardModal({ student, onClose }) {
                 <div>
                   <dt className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Status</dt>
                   <dd>
-                    <span className="inline-flex px-2 py-0.5 rounded-full bg-hadir/10 text-hadir text-[11px] font-extrabold">
-                      Aktif
-                    </span>
+                    {student.status === 'alumni' ? (
+                      <span className="inline-flex px-2 py-0.5 rounded-full bg-plum/10 text-plum text-[11px] font-extrabold">
+                        Alumni
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-0.5 rounded-full bg-hadir/10 text-hadir text-[11px] font-extrabold">
+                        Aktif
+                      </span>
+                    )}
                   </dd>
                 </div>
               </div>
@@ -115,6 +121,16 @@ export default function StudentCardModal({ student, onClose }) {
             </div>
           </div>
         </section>
+
+        <div className="mt-4 flex justify-center print:hidden">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="h-11 px-5 rounded-full bg-marine text-white text-sm font-bold shadow-tactile hover:bg-marine-deep active:shadow-tactile-pressed transition-all inline-flex items-center gap-2"
+          >
+            <Printer className="w-4 h-4" /> Cetak Kartu
+          </button>
+        </div>
       </div>
     </div>
   );

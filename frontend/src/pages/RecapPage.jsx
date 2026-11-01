@@ -3,6 +3,7 @@ import {
   Clock, Download, Filter, Plus, Trash2, Calendar, FileSpreadsheet, CheckCircle2, AlertCircle, BookOpen, UserCheck
 } from 'lucide-react';
 import * as api from '../services/api';
+import { confirmDialog } from '../components/ConfirmDialog';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 import { CLASSES } from '../constants';
@@ -77,7 +78,7 @@ export default function RecapPage({ user, notify }) {
   };
 
   const handleDeleteAttendance = async (id) => {
-    if (!window.confirm('Hapus baris data absensi ini?')) return;
+    if (!(await confirmDialog({ message: 'Hapus baris data absensi ini?', confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteAttendance(id);
       notify && notify('success', 'Data absensi dihapus.');
@@ -325,8 +326,8 @@ export default function RecapPage({ user, notify }) {
 
       {/* Manual Input Modal */}
       {showManualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-backdrop-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-pop-in">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Input Manual / Surat Izin</h3>
             <form onSubmit={handleManualSubmit} className="space-y-4">
               <div>

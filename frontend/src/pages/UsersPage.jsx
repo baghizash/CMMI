@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserCog, Plus, Trash2, Shield, Lock, X } from 'lucide-react';
 import * as api from '../services/api';
+import { confirmDialog } from '../components/ConfirmDialog';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 
@@ -48,7 +49,7 @@ export default function UsersPage({ user, notify }) {
   };
 
   const handleDeleteUser = async (id, name) => {
-    if (!window.confirm(`Hapus pengguna ${name}?`)) return;
+    if (!(await confirmDialog({ message: `Hapus pengguna ${name}?`, confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteUser(id);
       notify && notify('success', 'Pengguna berhasil dihapus.');
@@ -106,8 +107,6 @@ export default function UsersPage({ user, notify }) {
                             ? 'bg-rose-100 text-rose-800'
                             : u.role === 'kepsek'
                             ? 'bg-emerald-100 text-emerald-800'
-                            : u.role === 'guru_piket'
-                            ? 'bg-amber-100 text-amber-800'
                             : u.role === 'guru'
                             ? 'bg-indigo-100 text-indigo-800'
                             : 'bg-slate-100 text-slate-800'
@@ -140,8 +139,8 @@ export default function UsersPage({ user, notify }) {
 
       {/* Add User Modal */}
       {showAddUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-backdrop-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-pop-in">
             <button
               onClick={() => setShowAddUserModal(false)}
               className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600"
@@ -194,7 +193,6 @@ export default function UsersPage({ user, notify }) {
                   className="w-full px-3.5 py-2.5 border rounded-2xl text-xs"
                 >
                   <option value="guru">Guru Mapel</option>
-                  <option value="guru_piket">Guru Piket</option>
                   <option value="kepsek">Kepala Sekolah</option>
                   <option value="admin">Administrator</option>
                 </select>

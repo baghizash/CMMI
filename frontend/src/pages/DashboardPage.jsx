@@ -6,8 +6,9 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend
 } from 'recharts';
 import * as api from '../services/api';
+import SemesterCard from '../components/SemesterCard';
 
-export default function DashboardPage({ notify }) {
+export default function DashboardPage({ notify, user }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +55,8 @@ export default function DashboardPage({ notify }) {
           </button>
         </div>
       </div>
+
+      <SemesterCard notify={notify} user={user} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

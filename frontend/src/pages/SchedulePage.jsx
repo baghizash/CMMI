@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Trash2, UserCog, BookOpen } from 'lucide-react';
+import { Calendar, Plus, Trash2, BookOpen, ChevronDown } from 'lucide-react';
 import * as api from '../services/api';
-import PaginationBar from '../components/PaginationBar';
-import usePagination from '../hooks/usePagination';
+import { confirmDialog } from '../components/ConfirmDialog';
 import { CLASSES, DAYS, SUBJECTS } from '../constants';
+import TeacherAssignmentsPanel from '../components/TeacherAssignmentsPanel';
+import HomeroomAssignmentsPanel from '../components/HomeroomAssignmentsPanel';
+import SlidingTabBar from '../components/SlidingTabBar';
 
 export default function SchedulePage({ user, notify }) {
-  const [selectedClass, setSelectedClass] = useState(CLASSES[0]);
-  const [selectedDay, setSelectedDay] = useState('Senin');
 
   const [schedules, setSchedules] = useState([]);
-  const schedulePager = usePagination(schedules, 5, [selectedClass, selectedDay]);
-  const [piketList, setPiketList] = useState([]);
-  const piketPager = usePagination(piketList, 5, [selectedDay]);
   const [loading, setLoading] = useState(false);
 
+  const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal' | 'mapel' | 'wali'
+  const [openClassKeys, setOpenClassKeys] = useState({});
+  const toggleClassGroup = (key) => setOpenClassKeys((prev) => ({ ...prev, [key]: !prev[key] }));
+  const isGuru = user?.role === 'guru';
+  const [teacherUsers, setTeacherUsers] = useState([]);
+  const [showTeacherSuggest, setShowTeacherSuggest] = useState(false);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
-  const [showAddPiketModal, setShowAddPiketModal] = useState(false);
 
   const [newSchedule, setNewSchedule] = useState({
     day: 'Senin',
@@ -29,24 +31,16 @@ export default function SchedulePage({ user, notify }) {
     room: '',
   });
 
-  const [newPiket, setNewPiket] = useState({
-    date: new Date().toISOString().split('T')[0],
-    teacher_name: '',
-    notes: '',
-  });
+
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [schRes, piketRes] = await Promise.all([
-        api.getSchedules({ class_name: selectedClass, day: selectedDay }),
-        api.getGuruPiket({ date: new Date().toISOString().split('T')[0] }),
-      ]);
+      const schRes = await api.getSchedules({});
       setSchedules(schRes.data || []);
-      setPiketList(piketRes.data || []);
     } catch (e) {
       console.error('Failed fetching schedule data', e);
-      notify && notify('error', 'Gagal memuat jadwal & guru piket.');
+      notify && notify('error', 'Gagal memuat jadwal.');
     } finally {
       setLoading(false);
     }
@@ -54,7 +48,22 @@ export default function SchedulePage({ user, notify }) {
 
   useEffect(() => {
     fetchData();
-  }, [selectedClass, selectedDay]);
+  }, []);
+
+  // Daftar user guru untuk kotak kombo nama guru di form tambah jadwal
+  useEffect(() => {
+    if (!isGuru) {
+      api
+        .getUsers()
+        .then((res) => {
+          const list = (res.data.data || [])
+            .filter((u) => u.role === 'guru')
+            .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+          setTeacherUsers(list);
+        })
+        .catch(() => setTeacherUsers([]));
+    }
+  }, [user]);
 
   const handleAddSchedule = async (e) => {
     e.preventDefault();
@@ -69,7 +78,7 @@ export default function SchedulePage({ user, notify }) {
   };
 
   const handleDeleteSchedule = async (id) => {
-    if (!window.confirm('Hapus jadwal pelajaran ini?')) return;
+    if (!(await confirmDialog({ message: 'Hapus jadwal pelajaran ini?', confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
       await api.deleteSchedule(id);
       notify && notify('success', 'Jadwal dihapus.');
@@ -79,172 +88,218 @@ export default function SchedulePage({ user, notify }) {
     }
   };
 
-  const handleAddPiket = async (e) => {
-    e.preventDefault();
+  // Baris tampilan kartu hari: entri berurutan dengan kelas, mapel, dan
+  // guru yang sama (blok ganda seperti PJOK 2 jam) digabung jadi satu
+  // baris. Kolom "Jam ke" tidak ditampilkan; waktu cukup ditulis kecil.
+  const mergeDayRows = (entries) => {
+    const rows = [];
+    entries.forEach((sch) => {
+      const last = rows[rows.length - 1];
+      if (
+        last &&
+        last.class_name === sch.class_name &&
+        last.subject_name === sch.subject_name &&
+        last.teacher_name === sch.teacher_name &&
+        sch.period === last.lastPeriod + 1 &&
+        String(sch.start_time).substring(0, 5) === String(last.end_time).substring(0, 5)
+      ) {
+        last.end_time = sch.end_time;
+        last.lastPeriod = sch.period;
+        last.ids.push(sch.id);
+      } else {
+        rows.push({
+          key: sch.id,
+          class_name: sch.class_name,
+          subject_name: sch.subject_name,
+          teacher_name: sch.teacher_name,
+          start_time: sch.start_time,
+          end_time: sch.end_time,
+          lastPeriod: sch.period,
+          ids: [sch.id],
+        });
+      }
+    });
+    return rows;
+  };
+
+  const handleDeleteScheduleGroup = async (row) => {
+    const label = row.ids.length > 1 ? `blok jadwal ${row.subject_name} kelas ${row.class_name} (${row.ids.length} jam)` : 'jadwal pelajaran ini';
+    if (!(await confirmDialog({ message: `Hapus ${label}?`, confirmText: 'Ya, Hapus', danger: true }))) return;
     try {
-      await api.createGuruPiket(newPiket);
-      notify && notify('success', 'Guru Piket ditambahkan.');
-      setShowAddPiketModal(false);
+      for (const id of row.ids) {
+        await api.deleteSchedule(id);
+      }
+      notify && notify('success', 'Jadwal dihapus.');
       fetchData();
-    } catch (err) {
-      notify && notify('error', err.response?.data?.message || 'Gagal tambah guru piket.');
+    } catch (e) {
+      notify && notify('error', 'Gagal hapus jadwal.');
     }
   };
 
-  const handleDeletePiket = async (id) => {
-    if (!window.confirm('Hapus guru piket ini?')) return;
-    try {
-      await api.deleteGuruPiket(id);
-      notify && notify('success', 'Guru piket dihapus.');
-      fetchData();
-    } catch (e) {
-      notify && notify('error', 'Gagal hapus guru piket.');
-    }
-  };
+  // Guru hanya melihat jadwal mengajarnya SENDIRI: saring dari nama
+  // guru pada jadwal, bukan dari mata pelajaran — mapel yang sama bisa
+  // diajar guru lain di kelas lain dan itu bukan jadwalnya.
+  const visibleSchedules = isGuru
+    ? schedules.filter((s) => s.teacher_name === user?.name)
+    : schedules;
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       {/* Header Bar */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Jadwal Pelajaran & Guru Piket</h2>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">Kelola alokasi mata pelajaran & petugas piket harian</p>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Jadwal & Penugasan</h2>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">Jadwal pelajaran dan penugasan guru dalam satu halaman</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setShowAddPiketModal(true)}
-            className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-2xl transition-all flex items-center gap-2"
-          >
-            <UserCog className="w-4 h-4" /> Set Guru Piket
-          </button>
-
-          <button
-            onClick={() => setShowAddScheduleModal(true)}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> Tambah Jadwal
-          </button>
-        </div>
+        <SlidingTabBar
+          ariaLabel="Pilih fitur"
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            { key: 'jadwal', label: 'Jadwal Mapel', color: '#4F46E5' },
+            ...(user?.role === 'admin'
+              ? [
+                  { key: 'mapel', label: 'Penugasan Guru Mapel', color: '#D97706' },
+                  { key: 'wali', label: 'Penugasan Wali Kelas', color: '#6D3B8A' },
+                ]
+              : []),
+          ]}
+        />
       </div>
 
-      {/* Filter Row */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500">Kelas:</span>
-          <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none"
-          >
-            {CLASSES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500">Hari:</span>
-          <select
-            value={selectedDay}
-            onChange={(e) => setSelectedDay(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none"
-          >
-            {DAYS.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Grid: Schedule Table + Guru Piket Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Schedule Table */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-900 text-sm">
-              Jadwal Kelas {selectedClass} - Hari {selectedDay}
-            </h3>
+      {/* Tab panels */}
+      {activeTab === 'jadwal' && (
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-slate-500">
+              {isGuru
+                ? `${DAYS.length} hari efektif · ${visibleSchedules.length} jadwal mata pelajaran Anda`
+                : `${DAYS.length} hari efektif · ${schedules.length} jadwal pelajaran dari semua kelas`}
+            </p>
+            {!isGuru && (
+              <button
+                onClick={() => setShowAddScheduleModal(true)}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Tambah Jadwal
+              </button>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3.5">Jam Ke-</th>
-                  <th className="px-6 py-3.5">Waktu</th>
-                  <th className="px-6 py-3.5">Mata Pelajaran</th>
-                  <th className="px-6 py-3.5">Guru Pengajar</th>
-                  <th className="px-6 py-3.5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {schedules.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-12 text-slate-400">
-                      Belum ada jadwal tersimpan untuk kelas & hari ini.
-                    </td>
-                  </tr>
-                ) : (
-                  schedulePager.pageItems.map((sch) => (
-                    <tr key={sch.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 font-bold text-indigo-600">Ke-{sch.period}</td>
-                      <td className="px-6 py-4 font-mono">{sch.start_time} - {sch.end_time}</td>
-                      <td className="px-6 py-4 font-bold text-slate-900">{sch.subject_name}</td>
-                      <td className="px-6 py-4">{sch.teacher_name || '-'}</td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleDeleteSchedule(sch.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          {schedules.length > 0 && (
-            <PaginationBar page={schedulePager.page} totalPages={schedulePager.totalPages} total={schedulePager.total} perPage={schedulePager.perPage} onPageChange={schedulePager.setPage} />
-          )}
-        </div>
 
-        {/* Guru Piket List */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-            <UserCog className="w-4 h-4 text-amber-600" /> Guru Piket Hari Ini
-          </h3>
-          {piketList.length === 0 ? (
-            <p className="text-xs text-slate-400 italic py-4 text-center">Belum ada guru piket terdaftar hari ini.</p>
-          ) : (
-            <div className="space-y-2">
-              {piketPager.pageItems.map((p) => (
-                <div key={p.id} className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">{p.teacher_name}</p>
-                    <p className="text-[10px] text-slate-500">{p.notes || 'Petugas Piket'}</p>
-                  </div>
-                  <button
-                    onClick={() => handleDeletePiket(p.id)}
-                    className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {piketList.length > 0 && (
-            <PaginationBar page={piketPager.page} totalPages={piketPager.totalPages} total={piketPager.total} perPage={piketPager.perPage} onPageChange={piketPager.setPage} />
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {DAYS.map((day) => {
+              const daySchedules = visibleSchedules
+                .filter((s) => s.day === day)
+                .sort((x, y) => String(x.class_name).localeCompare(String(y.class_name)) || x.period - y.period);
+              const dayRows = mergeDayRows(daySchedules);
+              const hhmm = (t) => (t ? String(t).substring(0, 5) : '');
+              // Kelompok per kelas untuk tampilan akordeon (admin):
+              // awalnya hanya kepala kelas yang terlihat; jadwalnya
+              // terbuka ke bawah saat kepala kelas ditekan.
+              const classGroups = [];
+              daySchedules.forEach((sch) => {
+                let g = classGroups.find((x) => x.class_name === sch.class_name);
+                if (!g) {
+                  g = { class_name: sch.class_name, entries: [] };
+                  classGroups.push(g);
+                }
+                g.entries.push(sch);
+              });
+              classGroups.forEach((g) => {
+                g.rows = mergeDayRows(g.entries);
+              });
+              return (
+                <section key={day} aria-label={`Jadwal hari ${day}`} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+                  <header className="px-5 py-4 bg-plum/5 border-b border-slate-100 flex items-center justify-between">
+                    <h3 className="font-extrabold text-slate-900 text-sm">{day}</h3>
+                    <span className="px-2.5 py-1 bg-plum/10 text-plum rounded-full text-[10px] font-extrabold">
+                      {isGuru ? daySchedules.length : dayRows.length} pelajaran
+                    </span>
+                  </header>
+                  {daySchedules.length === 0 ? (
+                    <p className="px-5 py-8 text-xs text-slate-400 italic text-center">Belum ada jadwal hari ini.</p>
+                  ) : isGuru ? (
+                    <ul className="divide-y divide-slate-100">
+                      {daySchedules.map((sch) => (
+                        <li key={sch.id} className="px-5 py-3 flex items-start gap-3 hover:bg-slate-50/80 transition-colors">
+                          <div className="shrink-0 w-14">
+                            <p className="text-[11px] font-extrabold text-indigo-600">Jam {sch.period}</p>
+                            <p className="text-[10px] font-mono text-slate-500">{sch.start_time}–{sch.end_time}</p>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-slate-900 truncate">{sch.subject_name}</p>
+                            <p className="text-[11px] text-slate-500 truncate">{sch.teacher_name || 'Guru belum diisi'}</p>
+                          </div>
+                          <span className="shrink-0 px-2.5 py-1 bg-plum/10 text-plum rounded-xl text-[10px] font-extrabold">{sch.class_name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {classGroups.map((g) => {
+                        const groupKey = `${day}|${g.class_name}`;
+                        const open = !!openClassKeys[groupKey];
+                        return (
+                          <div key={g.class_name}>
+                            <button
+                              type="button"
+                              onClick={() => toggleClassGroup(groupKey)}
+                              aria-expanded={open}
+                              className="w-full px-5 py-3 flex items-center gap-3 hover:bg-slate-50/80 transition-colors"
+                            >
+                              <span className="px-2.5 py-1 bg-plum/10 text-plum rounded-xl text-[11px] font-extrabold">{g.class_name}</span>
+                              <span className="flex-1 text-left text-[11px] font-bold text-slate-500">{g.rows.length} pelajaran</span>
+                              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+                            </button>
+                            <div className={`grid transition-all duration-300 ease-out ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                              <div className="overflow-hidden">
+                                <ul className="divide-y divide-slate-100 border-t border-slate-100 bg-slate-50/50">
+                                  {g.rows.map((row) => (
+                                    <li key={row.key} className="pl-14 pr-5 py-2.5 flex items-center gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold text-slate-900 truncate">{row.subject_name}</p>
+                                        <p className="text-[11px] text-slate-500 truncate">
+                                          {row.teacher_name || 'Guru belum diisi'}
+                                          <span className="text-slate-400 font-mono"> · {hhmm(row.start_time)}–{hhmm(row.end_time)}</span>
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => handleDeleteScheduleGroup(row)}
+                                        className="shrink-0 p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
+                                        title="Hapus Jadwal"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {activeTab === 'mapel' && user?.role === 'admin' && (
+        <TeacherAssignmentsPanel notify={notify} />
+      )}
+
+      {activeTab === 'wali' && user?.role === 'admin' && (
+        <HomeroomAssignmentsPanel notify={notify} />
+      )}
 
       {/* Add Schedule Modal */}
       {showAddScheduleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-backdrop-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-pop-in">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Tambah Jadwal Pelajaran</h3>
             <form onSubmit={handleAddSchedule} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -293,14 +348,56 @@ export default function SchedulePage({ user, notify }) {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Nama Guru Pengajar</label>
-                <input
-                  type="text"
-                  required
-                  value={newSchedule.teacher_name}
-                  onChange={(e) => setNewSchedule({ ...newSchedule, teacher_name: e.target.value })}
-                  placeholder="Nama Guru"
-                  className="w-full px-3 py-2 border rounded-2xl text-xs"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={newSchedule.teacher_name}
+                    onChange={(e) => {
+                      setNewSchedule({ ...newSchedule, teacher_name: e.target.value });
+                      setShowTeacherSuggest(true);
+                    }}
+                    onFocus={() => setShowTeacherSuggest(true)}
+                    onBlur={() => setTimeout(() => setShowTeacherSuggest(false), 150)}
+                    placeholder="Ketik nama guru..."
+                    autoComplete="off"
+                    role="combobox"
+                    aria-expanded={showTeacherSuggest}
+                    aria-label="Nama Guru Pengajar"
+                    className="w-full px-3 py-2 border rounded-2xl text-xs"
+                  />
+                  {showTeacherSuggest &&
+                    (() => {
+                      const q = newSchedule.teacher_name.trim().toLowerCase();
+                      const matches = teacherUsers
+                        .filter((u) => q === '' || String(u.name).toLowerCase().startsWith(q))
+                        .slice(0, 8);
+                      if (matches.length === 0) return null;
+                      return (
+                        <ul className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-auto bg-white border border-slate-200 rounded-2xl shadow-lg py-1" role="listbox">
+                          {matches.map((u) => (
+                            <li key={u.id}>
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected="false"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setNewSchedule({ ...newSchedule, teacher_name: u.name });
+                                  setShowTeacherSuggest(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-indigo-50 flex items-center justify-between gap-2"
+                              >
+                                <span>{u.name}</span>
+                                <span className="text-[10px] font-bold text-slate-400">Guru</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Ketik untuk mencari guru terdaftar, atau tulis nama secara manual.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -331,40 +428,6 @@ export default function SchedulePage({ user, notify }) {
         </div>
       )}
 
-      {/* Add Piket Modal */}
-      {showAddPiketModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Set Guru Piket</h3>
-            <form onSubmit={handleAddPiket} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
-                <input
-                  type="date"
-                  value={newPiket.date}
-                  onChange={(e) => setNewPiket({ ...newPiket, date: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-2xl text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nama Guru Piket</label>
-                <input
-                  type="text"
-                  required
-                  value={newPiket.teacher_name}
-                  onChange={(e) => setNewPiket({ ...newPiket, teacher_name: e.target.value })}
-                  placeholder="Nama Guru"
-                  className="w-full px-3 py-2 border rounded-2xl text-xs"
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setShowAddPiketModal(false)} className="px-4 py-2 text-xs font-semibold">Batal</button>
-                <button type="submit" className="px-5 py-2.5 bg-amber-600 text-white font-bold text-xs rounded-2xl shadow-md">Simpan</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

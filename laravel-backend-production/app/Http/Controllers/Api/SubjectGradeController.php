@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use App\Models\SubjectGrade;
 use App\Models\Student;
 use App\Models\TeacherAssignment;
+use App\Models\Semester;
 use App\Http\Helpers\TeacherScope;
 
 class SubjectGradeController extends Controller
@@ -112,11 +113,14 @@ class SubjectGradeController extends Controller
         // Get all students in the requested class
         $students = Student::where('class_name', $className)->orderBy('name')->get();
 
-        // Get existing grades for this class and subject
-        $existingGrades = SubjectGrade::where('class_name', $className)
-            ->where('subject_name', $subjectName)
-            ->get()
-            ->keyBy('student_id');
+        // Get existing grades for this class and subject (semester aktif)
+        $gradeQuery = SubjectGrade::where('class_name', $className)
+            ->where('subject_name', $subjectName);
+        $activeSemesterId = Semester::activeId();
+        if ($activeSemesterId) {
+            $gradeQuery->where('semester_id', $activeSemesterId);
+        }
+        $existingGrades = $gradeQuery->get()->keyBy('student_id');
 
         $studentGradesData = $students->map(function ($st) use ($existingGrades) {
             $grade = $existingGrades->get($st->id);
@@ -179,11 +183,17 @@ class SubjectGradeController extends Controller
 
             $finalTotal = count($components) ? round(array_sum($components) / count($components), 1) : null;
 
+            $gradeKey = [
+                'student_id' => $student->id,
+                'subject_name' => $subjectName,
+            ];
+            $activeSemesterId = Semester::activeId();
+            if ($activeSemesterId) {
+                $gradeKey['semester_id'] = $activeSemesterId;
+            }
+
             SubjectGrade::updateOrCreate(
-                [
-                    'student_id' => $student->id,
-                    'subject_name' => $subjectName
-                ],
+                $gradeKey,
                 [
                     'id' => (string) Str::uuid(),
                     'student_nis' => $student->nis,
@@ -239,8 +249,14 @@ class SubjectGradeController extends Controller
         }
         $finalTotal = count($components) ? array_sum($components) / count($components) : null;
 
+        $gradeKey = ['student_id' => $request->student_id, 'subject_name' => $request->subject_name];
+        $activeSemesterId = Semester::activeId();
+        if ($activeSemesterId) {
+            $gradeKey['semester_id'] = $activeSemesterId;
+        }
+
         $grade = SubjectGrade::updateOrCreate(
-            ['student_id' => $request->student_id, 'subject_name' => $request->subject_name],
+            $gradeKey,
             [
                 'id' => (string) Str::uuid(),
                 'student_nis' => $student->nis,
