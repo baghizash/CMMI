@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { GraduationCap, BookOpen, Save, Eye, UserCheck, TrendingUp } from 'lucide-react';
+import { GraduationCap, BookOpen, Save, Eye, UserCheck, TrendingUp, Send } from 'lucide-react';
 import * as api from '../services/api';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
@@ -14,6 +14,34 @@ import PromotionDecisionsPanel from '../components/PromotionDecisionsPanel';
 // tanpa pemilih kelas/mapel bebas.
 
 const SCORE_FIELDS = ['task_score', 'midterm_score', 'remedial_score', 'final_score'];
+
+// Pratinjau nilai akhir berbobot, meniru rumus server
+// (SubjectGrade::computeFinalTotal): Tugas 20%, UTS 30%, UAS 50%.
+// Remedial menggantikan UAS bila lebih tinggi; komponen kosong
+// dikeluarkan dan bobot sisanya dinormalisasi.
+function computeWeightedFinal(row) {
+  const num = (v) => (v === '' || v === null || v === undefined || Number.isNaN(parseFloat(v)) ? null : parseFloat(v));
+  const task = num(row.task_score);
+  const midterm = num(row.midterm_score);
+  const remedial = num(row.remedial_score);
+  let exam = num(row.final_score);
+  if (remedial !== null && (exam === null || remedial > exam)) exam = remedial;
+  const parts = [];
+  if (task !== null) parts.push([0.2, task]);
+  if (midterm !== null) parts.push([0.3, midterm]);
+  if (exam !== null) parts.push([0.5, exam]);
+  if (parts.length === 0) return null;
+  const weightSum = parts.reduce((a, [w]) => a + w, 0);
+  return Math.round((parts.reduce((a, [w, v]) => a + w * v, 0) / weightSum) * 10) / 10;
+}
+
+const BATCH_STATUS_LABEL = {
+  draft: 'Draft',
+  submitted: 'Terkirim',
+  verified: 'Terverifikasi',
+  locked: 'Terkunci',
+  mixed: 'Status tidak seragam',
+};
 
 export default function TeacherWorkspacePage({ user, notify }) {
   const navigate = useNavigate();
@@ -32,6 +60,9 @@ export default function TeacherWorkspacePage({ user, notify }) {
   const [matrix, setMatrix] = useState([]);
   const [loadingMatrix, setLoadingMatrix] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [matrixStatus, setMatrixStatus] = useState('draft');
+  const [submitting, setSubmitting] = useState(false);
+  const canEditMatrix = matrixStatus === 'draft';
 
   // Scope + students (backend membatasi siswa ke kelas ampuan guru)
   useEffect(() => {
@@ -64,6 +95,7 @@ export default function TeacherWorkspacePage({ user, notify }) {
     try {
       const res = await api.getGroupedGrades({ class_name: assignment.class_name, subject_name: assignment.subject_name });
       setMatrix(res.data.students || []);
+      setMatrixStatus(res.data.batch_status || 'draft');
     } catch (e) {
       console.error('Failed fetching matrix', e);
       notify && notify('error', e.response?.data?.message || 'Gagal memuat data nilai murid.');
@@ -80,15 +112,26 @@ export default function TeacherWorkspacePage({ user, notify }) {
   const handleScoreChange = (index, field, value) => {
     const updated = [...matrix];
     updated[index][field] = value;
-    const scores = [];
-    SCORE_FIELDS.forEach((f) => {
-      const v = updated[index][f];
-      if (v !== '' && v !== null && v !== undefined && !isNaN(parseFloat(v))) scores.push(parseFloat(v));
-    });
-    updated[index].final_total = scores.length
-      ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
-      : null;
+    updated[index].final_total = computeWeightedFinal(updated[index]);
     setMatrix(updated);
+  };
+
+  // Kirim batch nilai ke admin/kepsek untuk diverifikasi (draft -> terkirim)
+  const handleSubmitBatch = async () => {
+    if (!activeAssignment) return;
+    setSubmitting(true);
+    try {
+      const res = await api.submitGradesBatch({
+        class_name: activeAssignment.class_name,
+        subject_name: activeAssignment.subject_name,
+      });
+      notify && notify('success', res.data.message || 'Nilai berhasil dikirim!');
+      fetchMatrix(activeAssignment);
+    } catch (err) {
+      notify && notify('error', err.response?.data?.message || 'Gagal mengirim nilai.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -283,15 +326,30 @@ export default function TeacherWorkspacePage({ user, notify }) {
                   <h3 className="font-extrabold text-slate-900 text-sm">
                     {activeAssignment.subject_name} · Kelas {activeAssignment.class_name}
                   </h3>
-                  <p className="text-[11px] font-semibold text-slate-500">Isi nilai murid di kelas ampuan Anda untuk mata pelajaran ini.</p>
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    Isi nilai murid di kelas ampuan Anda untuk mata pelajaran ini. Status batch:{' '}
+                    <span className="font-bold text-slate-700">{BATCH_STATUS_LABEL[matrixStatus] || matrixStatus}</span>
+                    {!canEditMatrix && ' — nilai tidak dapat diubah sampai dibuka kunci oleh admin/kepsek.'}
+                  </p>
                 </div>
-                <button
-                  onClick={handleSave}
-                  disabled={saving || matrix.length === 0}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" /> {saving ? 'Menyimpan...' : 'Simpan Nilai'}
-                </button>
+                <div className="flex items-center gap-2">
+                  {canEditMatrix && (
+                    <button
+                      onClick={handleSubmitBatch}
+                      disabled={submitting || matrix.length === 0}
+                      className="px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-sky-600/20 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" /> {submitting ? 'Mengirim...' : 'Kirim'}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || matrix.length === 0 || !canEditMatrix}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" /> {saving ? 'Menyimpan...' : 'Simpan Draft'}
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -326,8 +384,9 @@ export default function TeacherWorkspacePage({ user, notify }) {
                                 max="100"
                                 value={st[field] ?? ''}
                                 onChange={(e) => handleScoreChange(idx, field, e.target.value)}
+                                disabled={!canEditMatrix}
                                 placeholder="0-100"
-                                className="w-20 text-center px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-800 bg-slate-50/50"
+                                className="w-20 text-center px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-800 bg-slate-50/50 disabled:opacity-50"
                               />
                             </td>
                           ))}
