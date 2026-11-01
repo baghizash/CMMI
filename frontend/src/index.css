@@ -146,6 +146,9 @@ code {
     background-color 240ms ease;
   will-change: transform, width;
 }
+.sliding-indicator-light {
+  box-shadow: 0 1px 3px rgba(30, 39, 50, 0.12), 0 4px 10px rgba(30, 39, 50, 0.08);
+}
 @media (prefers-reduced-motion: reduce) {
   .sliding-indicator {
     transition: none;
