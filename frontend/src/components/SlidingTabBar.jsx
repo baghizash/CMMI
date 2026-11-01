@@ -9,7 +9,7 @@ import useSlidingIndicator from '../hooks/useSlidingIndicator';
 // pil saat tab itu aktif (hex). Tombol yang sedang aktif berteks
 // putih; perpindahan warna teks diberi jeda kecil agar pilnya tiba
 // lebih dulu, meniru rasa pegas pada sakelar fisik.
-export default function SlidingTabBar({ items, activeKey, onChange, ariaLabel, className = '' }) {
+export default function SlidingTabBar({ items, activeKey, onChange, ariaLabel, light = false, className = '' }) {
   const { containerRef, registerItem, box } = useSlidingIndicator(activeKey, items.map((i) => i.key).join(','));
   const activeItem = items.find((i) => i.key === activeKey);
 
@@ -23,13 +23,13 @@ export default function SlidingTabBar({ items, activeKey, onChange, ariaLabel, c
       {box && activeItem && (
         <span
           aria-hidden="true"
-          className="sliding-indicator rounded-xl"
+          className={light ? 'sliding-indicator sliding-indicator-light rounded-xl' : 'sliding-indicator rounded-xl'}
           style={{
             transform: `translateX(${box.x}px)`,
             width: box.w,
             top: 6,
             bottom: 6,
-            backgroundColor: activeItem.color,
+            backgroundColor: light ? '#FFFFFF' : activeItem.color,
           }}
         />
       )}
@@ -44,9 +44,15 @@ export default function SlidingTabBar({ items, activeKey, onChange, ariaLabel, c
             aria-selected={active}
             onClick={() => onChange(item.key)}
             className={`relative z-10 px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-colors duration-200 active:scale-[0.97] ${
-              active ? 'text-white' : 'text-slate-600 hover:text-slate-900'
+              light
+                ? active
+                  ? 'text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900'
+                : active
+                  ? 'text-white'
+                  : 'text-slate-600 hover:text-slate-900'
             }`}
-            style={{ transitionDelay: active ? '60ms' : '0ms' }}
+            style={{ transitionDelay: active && !light ? '60ms' : '0ms' }}
           >
             {item.icon}
             {item.label}
