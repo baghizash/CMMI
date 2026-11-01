@@ -130,6 +130,28 @@ code {
     }
 }
 
+/* Indikator pil yang meluncur di belakang tab aktif (konsep "The
+   Switch" dari Studio Nine): geraknya memakai kurva mirip pegas
+   dengan sedikit kelebihan di akhir, dan LEBAR aslinya yang
+   dianimasikan (bukan scale) agar ujung pil tetap setengah lingkaran
+   sempurna saat ia meregang di tengah perjalanan. */
+.sliding-indicator {
+  position: absolute;
+  left: 0;
+  z-index: 0;
+  box-shadow: 0 4px 12px rgba(30, 39, 50, 0.22);
+  transition:
+    transform 380ms cubic-bezier(0.3, 1.28, 0.36, 1),
+    width 380ms cubic-bezier(0.3, 1.28, 0.36, 1),
+    background-color 240ms ease;
+  will-change: transform, width;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sliding-indicator {
+    transition: none;
+  }
+}
+
 /* Cetak satu kartu siswa: hanya area kartu yang tercetak, utuh satu halaman */
 @page {
   size: A4;
