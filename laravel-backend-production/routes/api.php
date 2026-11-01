@@ -13,6 +13,10 @@ use App\Http\Controllers\Api\ExportController;
 
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\TeacherAssignmentController;
+use App\Http\Controllers\Api\SemesterController;
+use App\Http\Controllers\Api\HomeroomTeacherController;
+use App\Http\Controllers\Api\PromotionController;
+use App\Http\Controllers\Api\ParentViewController;
 use App\Http\Middleware\CheckRole;
 
 // Public routes - CSRF exempt
@@ -23,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+    Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
 
     // User management routes (Admin only)
     Route::middleware(CheckRole::class . ':admin')->group(function () {
@@ -35,31 +40,51 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teacher-assignments', [TeacherAssignmentController::class, 'index']);
         Route::post('/teacher-assignments', [TeacherAssignmentController::class, 'store']);
         Route::delete('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'destroy']);
+
+        // Homeroom (wali kelas) assignments management
+        Route::get('/homeroom-teachers', [HomeroomTeacherController::class, 'index']);
+        Route::post('/homeroom-teachers', [HomeroomTeacherController::class, 'store']);
+        Route::delete('/homeroom-teachers/{id}', [HomeroomTeacherController::class, 'destroy']);
+
+        // Semester rollover (tombol Semester Baru) + kemajuan keputusan
+        Route::post('/semesters/rollover', [SemesterController::class, 'rollover']);
+        Route::get('/promotions/status', [PromotionController::class, 'status']);
     });
+
+    // Semesters (semua peran boleh membaca)
+    Route::get('/semesters', [SemesterController::class, 'index']);
+    Route::get('/semesters/active', [SemesterController::class, 'active']);
+
+    // Keputusan naik kelas (wali kelas; diperiksa di controller)
+    Route::get('/promotions/my-classes', [PromotionController::class, 'myClasses']);
+    Route::post('/promotions/decide', [PromotionController::class, 'decide']);
+
+    // Transkrip per semester
+    Route::get('/students/{id}/transcript', [StudentController::class, 'transcript']);
 
     // Teacher scope
     Route::get('/teacher-assignments/my-scope', [TeacherAssignmentController::class, 'myScope']);
 
     // Students routes — index & store are scoped in controller for guru
     Route::get('/students', [StudentController::class, 'index']);
+    Route::get('/students/{id}', [StudentController::class, 'show']);
     Route::post('/students', [StudentController::class, 'store']);
 
-    // Student management routes (Admin, Kepsek & Guru Piket only)
-    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
+    // Student management routes (Admin & Kepsek only)
+    Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
         Route::post('/students/import', [StudentController::class, 'import']);
         Route::post('/students/promote-class', [StudentController::class, 'promoteClass']);
         Route::put('/students/{id}', [StudentController::class, 'update']);
         Route::delete('/students/{id}', [StudentController::class, 'destroy']);
-        Route::post('/students/seed-demo', [StudentController::class, 'seedDemo']);
     });
 
-    // Daily Attendance routes — Absen Hadir & Pulang (Admin, Kepsek & Guru Piket only)
-    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
-        Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
-        Route::get('/attendance', [AttendanceController::class, 'index']);
-        Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
-        Route::delete('/attendance/{id}', [AttendanceController::class, 'destroy']);
-    });
+    // Daily Attendance routes — Absen Masuk & Pulang. Akses diperiksa
+    // di AttendanceController: admin/kepsek selalu boleh; guru hanya
+    // bila hari ini ia bertugas piket (peran guru_piket sudah dihapus).
+    Route::post('/attendance/scan', [AttendanceController::class, 'scan']);
+    Route::get('/attendance', [AttendanceController::class, 'index']);
+    Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
+    Route::delete('/attendance/{id}', [AttendanceController::class, 'destroy']);
 
     // Subject Attendance routes — Absen Mapel (scoped in controller for guru)
     Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket,guru')->group(function () {
@@ -67,16 +92,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/subject-attendance', [SubjectAttendanceController::class, 'index']);
     });
 
-    // Schedules routes (Admin & Kepsek)
+    // Schedules routes: membaca boleh semua peran (jadwal guru
+    // ditampilkan terfilter mapel ampuannya di halaman); mengubah
+    // hanya Admin & Kepsek.
+    Route::get('/schedules', [ScheduleController::class, 'index']);
     Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
-        Route::get('/schedules', [ScheduleController::class, 'index']);
         Route::post('/schedules', [ScheduleController::class, 'store']);
         Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
     });
 
-    // Guru Piket routes (Admin & Kepsek)
+    // Guru Piket routes: membaca daftar boleh semua peran (tab piket
+    // di halaman Jadwal bersifat lihat-saja untuk guru); mengubah
+    // data hanya Admin & Kepsek.
+    Route::get('/guru-piket', [GuruPiketController::class, 'index']);
     Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
-        Route::get('/guru-piket', [GuruPiketController::class, 'index']);
         Route::post('/guru-piket', [GuruPiketController::class, 'store']);
         Route::delete('/guru-piket/{id}', [GuruPiketController::class, 'destroy']);
     });
@@ -84,8 +113,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dashboard routes
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
-    // Export routes (Admin, Kepsek & Guru Piket only)
-    Route::middleware(CheckRole::class . ':admin,kepsek,guru_piket')->group(function () {
+    // Export routes (Admin & Kepsek only)
+    Route::middleware(CheckRole::class . ':admin,kepsek')->group(function () {
         Route::get('/export/excel', [ExportController::class, 'excel']);
     });
 
@@ -93,6 +122,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/grades', [\App\Http\Controllers\Api\SubjectGradeController::class, 'index']);
     Route::get('/grades/grouped', [\App\Http\Controllers\Api\SubjectGradeController::class, 'grouped']);
     Route::post('/grades/batch', [\App\Http\Controllers\Api\SubjectGradeController::class, 'batchStore']);
+    // Alur status batch nilai: draft -> submitted -> verified -> locked.
+    // Hak peran diperiksa di SubjectGradeController::transition.
+    Route::post('/grades/batch/submit', [\App\Http\Controllers\Api\SubjectGradeController::class, 'submitBatch']);
+    Route::post('/grades/batch/verify', [\App\Http\Controllers\Api\SubjectGradeController::class, 'verifyBatch']);
+    Route::post('/grades/batch/lock', [\App\Http\Controllers\Api\SubjectGradeController::class, 'lockBatch']);
+    Route::post('/grades/batch/unlock', [\App\Http\Controllers\Api\SubjectGradeController::class, 'unlockBatch']);
     Route::get('/grades/student/{id}', [\App\Http\Controllers\Api\SubjectGradeController::class, 'studentGrades']);
     Route::post('/grades', [\App\Http\Controllers\Api\SubjectGradeController::class, 'store']);
+
+    // Tampilan orang tua (hanya-lihat, pratinjau staf — belum ada akun orang tua)
+    Route::get('/parent-view/students/{id}', [ParentViewController::class, 'show']);
 });
