@@ -25,6 +25,16 @@ function AppContent() {
   const [notification, setNotification] = useState(null);
   const navigate = useNavigate();
 
+  // Mode gelap untuk semua user; pilihan tersimpan di perangkat ini.
+  const [theme, setTheme] = useState(() => localStorage.getItem('cmmi-theme') || 'light');
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('cmmi-theme', next);
+      return next;
+    });
+  };
+
   const notify = (type, message) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3500);
@@ -55,9 +65,9 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 font-sans selection:bg-indigo-500 selection:text-white">
+    <div className={`min-h-screen bg-slate-100/70 text-slate-800 font-sans selection:bg-indigo-500 selection:text-white ${theme === 'dark' ? 'dark' : ''}`}>
       {user && (
-        <Navbar user={user} onLogout={handleLogout} notify={notify} />
+        <Navbar user={user} onLogout={handleLogout} notify={notify} theme={theme} onToggleTheme={toggleTheme} />
       )}
 
       <main className={user ? 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6' : ''}>
