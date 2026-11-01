@@ -121,6 +121,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/grades', [\App\Http\Controllers\Api\SubjectGradeController::class, 'index']);
     Route::get('/grades/grouped', [\App\Http\Controllers\Api\SubjectGradeController::class, 'grouped']);
     Route::post('/grades/batch', [\App\Http\Controllers\Api\SubjectGradeController::class, 'batchStore']);
+    // Alur status batch nilai: draft -> submitted -> verified -> locked.
+    // Hak peran diperiksa di SubjectGradeController::transition.
+    Route::post('/grades/batch/submit', [\App\Http\Controllers\Api\SubjectGradeController::class, 'submitBatch']);
+    Route::post('/grades/batch/verify', [\App\Http\Controllers\Api\SubjectGradeController::class, 'verifyBatch']);
+    Route::post('/grades/batch/lock', [\App\Http\Controllers\Api\SubjectGradeController::class, 'lockBatch']);
+    Route::post('/grades/batch/unlock', [\App\Http\Controllers\Api\SubjectGradeController::class, 'unlockBatch']);
     Route::get('/grades/student/{id}', [\App\Http\Controllers\Api\SubjectGradeController::class, 'studentGrades']);
     Route::post('/grades', [\App\Http\Controllers\Api\SubjectGradeController::class, 'store']);
 });
