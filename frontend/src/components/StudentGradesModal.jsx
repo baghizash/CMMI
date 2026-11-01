@@ -1,202 +1,183 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { X, Award, BookOpen } from 'lucide-react';
 import * as api from '../services/api';
 
-// Ambang tuntas saat ini (KKTP bawaan sekolah). Nantinya angka ini dibaca
-// dari pengaturan semester, bukan dikunci di kode.
-const KKTP = 75;
+// Jendela TERPISAH dari kartu siswa: Detail Nilai menampilkan riwayat
+// nilai siswa per semester, lalu per mata pelajaran, dengan komponen
+// lengkap (tugas, UTS, remedial, UAS, nilai akhir berbobot, status batch).
+// Sumber data: /api/grades/student/{id} (subject_grades, semua semester
+// secara bawaan sehingga arsip semester lama tetap terbaca).
+// Data masuk tidak pernah ditampilkan di kartu siswa itu sendiri.
 
-const TYPE_LABELS = {
-  tugas: 'Tugas',
-  kuis: 'Kuis',
-  ulangan: 'Ulangan',
-  uts: 'Sumatif Tengah Semester',
-  sts: 'Sumatif Tengah Semester',
-  uas: 'Sumatif Akhir Semester',
-  sas: 'Sumatif Akhir Semester',
-  remedial: 'Remedial',
-  ujian: 'Ujian',
+const PASS_THRESHOLD = 75;
+
+const STATUS_LABEL = {
+  draft: 'Draft',
+  submitted: 'Terkirim',
+  verified: 'Terverifikasi',
+  locked: 'Terkunci',
 };
 
-function typeLabel(raw) {
-  if (!raw) return 'Nilai';
-  const key = String(raw).toLowerCase();
-  return TYPE_LABELS[key] || raw;
-}
+const fmtScore = (v) =>
+  v === null || v === undefined || v === '' ? '–' : String(v).replace(/\.0$/, '');
 
-function formatDate(value) {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-// Popout Detail Nilai: jendela tersendiri, terpisah dari kartu siswa.
-// Menampilkan SEMUA catatan nilai per mata pelajaran, dari tugas harian
-// sampai ujian. Data yang sama kelak dilihat orang tua di dasbor mereka.
-export default function StudentGradesModal({ student, onClose }) {
-  const [grades, setGrades] = useState([]);
+export default function StudentGradesModal({ student, onClose, notify }) {
+  const [data, setData] = useState(null); // { student, semesters, pass_threshold }
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const fetchGrades = useCallback(async () => {
+    if (!student) return;
+    let alive = true;
     setLoading(true);
-    setError(false);
-    try {
-      const res = await api.getStudentGrades(student.id);
-      const list = Array.isArray(res.data) ? res.data : res.data?.data || [];
-      setGrades(list);
-    } catch (e) {
-      console.error('Failed fetching student grades', e);
-      setError(true);
-      setGrades([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [student.id]);
+    api
+      .getStudentGrades(student.id)
+      .then((res) => {
+        if (!alive) return;
+        setData(res.data);
+      })
+      .catch(() => {
+        if (!alive) return;
+        notify && notify('error', 'Gagal memuat detail nilai siswa.');
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [student, notify]);
 
-  useEffect(() => {
-    fetchGrades();
-  }, [fetchGrades]);
-
-  const grouped = useMemo(() => {
-    const map = new Map();
-    grades.forEach((g) => {
-      const subject = g.subject_name || 'Mata Pelajaran';
-      if (!map.has(subject)) map.set(subject, []);
-      map.get(subject).push(g);
-    });
-    return [...map.entries()].map(([subject, items]) => {
-      const nums = items.map((i) => parseFloat(i.grade)).filter((n) => !Number.isNaN(n));
-      const avg = nums.length ? Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 10) / 10 : null;
-      return { subject, items, avg };
-    });
-  }, [grades]);
-
-  const overallAvg = useMemo(() => {
-    const nums = grades.map((g) => parseFloat(g.grade)).filter((n) => !Number.isNaN(n));
-    return nums.length ? Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 10) / 10 : null;
-  }, [grades]);
+  const blocks = useMemo(() => data?.semesters || [], [data]);
+  const threshold = data?.pass_threshold ?? PASS_THRESHOLD;
+  const totalRows = blocks.reduce((a, b) => a + (b.grades?.length || 0), 0);
 
   if (!student) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label={`Detail nilai ${student.name}`}
     >
-      <div className="absolute inset-0 bg-[#1E2732]/55 backdrop-blur-[3px] animate-backdrop-in" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Tutup detail nilai"
+        onClick={onClose}
+        className="absolute inset-0 bg-[rgba(24,32,44,0.45)] backdrop-blur-[3px] cursor-default"
+      />
+      <div className="relative w-full max-w-2xl max-h-[86vh] overflow-y-auto bg-[#FBF8F2] rounded-[24px] shadow-[0_24px_64px_rgba(24,32,44,0.35)] animate-pop-in">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-[#FBF8F2]/95 backdrop-blur px-6 pt-5 pb-4 border-b border-[rgba(30,39,50,0.08)] flex items-start gap-4">
+          <div
+            className="w-11 h-11 shrink-0 rounded-2xl bg-tang/15 text-tang-dark flex items-center justify-center"
+            aria-hidden="true"
+          >
+            <Award className="w-6 h-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-extrabold text-ink tracking-tight truncate">Detail Nilai · {student.name}</h2>
+            <p className="text-xs font-semibold text-ink-soft">
+              NIS {student.nis} · Kelas {student.class_name} · {totalRows} mata pelajaran tercatat · tuntas ≥ {threshold}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup"
+            className="w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-full bg-white border border-[rgba(30,39,50,0.09)] text-ink-soft hover:text-ink transition-colors"
+          >
+            <X className="w-4.5 h-4.5" />
+          </button>
+        </div>
 
-      <div className="relative w-full max-w-2xl animate-pop-in">
-        <div className="bg-paper rounded-[28px] shadow-tile border border-[rgba(30,39,50,0.07)] max-h-[85vh] flex flex-col overflow-hidden">
-          <header className="flex items-start justify-between gap-4 px-6 py-5 bg-white/85 backdrop-blur-xl backdrop-saturate-150 border-b border-[rgba(30,39,50,0.07)]">
-            <div>
-              <h2 className="text-lg font-extrabold text-ink leading-tight">Detail Nilai</h2>
-              <p className="text-[13px] text-ink-soft font-semibold mt-0.5">
-                {student.name} · {student.class_name} · NIS {student.nis}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Tutup detail nilai"
-              className="w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-full text-ink-soft hover:bg-marine/10 hover:text-marine-deep transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </header>
-
-          <div className="overflow-y-auto p-5 space-y-4">
-            <section aria-label="Ringkasan nilai" className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-3xl border border-[rgba(30,39,50,0.07)] shadow-tactile p-4">
-                <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Catatan Nilai</p>
-                <p className="mt-1 text-2xl font-extrabold text-ink">{loading ? '...' : grades.length}</p>
-              </div>
-              <div className="bg-white rounded-3xl border border-[rgba(30,39,50,0.07)] shadow-tactile p-4">
-                <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Rata-rata</p>
-                <p className="mt-1 text-2xl font-extrabold text-ink">{loading ? '...' : overallAvg ?? '—'}</p>
-              </div>
-            </section>
-
-            {loading && <p className="text-sm text-ink-soft text-center py-6">Memuat nilai...</p>}
-
-            {!loading && error && (
-              <div className="bg-white rounded-3xl border border-[rgba(30,39,50,0.07)] p-5 text-center">
-                <p className="text-sm font-semibold text-ink">Nilai belum bisa dimuat.</p>
-                <p className="text-xs text-ink-soft mt-1">Periksa koneksi ke server, lalu coba lagi.</p>
-                <button
-                  type="button"
-                  onClick={fetchGrades}
-                  className="mt-3 h-11 px-5 rounded-full bg-marine/10 text-marine-deep text-sm font-bold inline-flex items-center gap-2 hover:bg-marine/15 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" /> Coba Lagi
-                </button>
-              </div>
-            )}
-
-            {!loading && !error && grouped.length === 0 && (
-              <p className="text-sm text-ink-soft text-center py-6">Belum ada nilai tercatat untuk siswa ini.</p>
-            )}
-
-            {!loading &&
-              !error &&
-              grouped.map(({ subject, items, avg }) => (
-                <article
-                  key={subject}
-                  className="bg-white rounded-3xl border border-[rgba(30,39,50,0.07)] shadow-tactile p-4"
-                >
-                  <header className="flex items-center justify-between gap-3 mb-2">
-                    <h3 className="text-sm font-extrabold text-ink">{subject}</h3>
-                    {avg !== null && (
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
-                          avg >= KKTP ? 'bg-hadir/10 text-hadir' : 'bg-alpa/10 text-alpa'
-                        }`}
-                      >
-                        Rata-rata {avg}
-                      </span>
-                    )}
-                  </header>
-                  <ul className="divide-y divide-[rgba(30,39,50,0.06)]">
-                    {items.map((g) => {
-                      const score = parseFloat(g.grade);
-                      const date = formatDate(g.created_at || g.date);
-                      return (
-                        <li key={g.id} className="py-2 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-semibold text-ink">{typeLabel(g.grade_type)}</p>
-                            {date && <p className="text-[11px] text-ink-soft">{date}</p>}
-                          </div>
-                          <span
-                            className={`text-sm font-extrabold ${
-                              !Number.isNaN(score) && score >= KKTP ? 'text-hadir' : 'text-alpa'
-                            }`}
-                          >
-                            {g.grade}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </article>
+        <div className="px-6 py-5">
+          {loading ? (
+            <p className="text-sm text-ink-soft py-10 text-center">Memuat nilai...</p>
+          ) : totalRows === 0 ? (
+            <p className="text-sm text-ink-soft py-10 text-center">Belum ada nilai tercatat untuk siswa ini.</p>
+          ) : (
+            <div className="space-y-6">
+              {blocks.map((block) => (
+                <section key={block.semester.id} aria-label={`Nilai ${block.semester.label}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <BookOpen className="w-4 h-4 text-marine" aria-hidden="true" />
+                    <h3 className="text-sm font-extrabold text-ink">
+                      Semester {block.semester.label}
+                      {block.semester.is_active && (
+                        <span className="ml-2 px-2 py-0.5 rounded-full bg-hadir/10 text-hadir text-[10px] font-extrabold align-middle">
+                          Aktif
+                        </span>
+                      )}
+                    </h3>
+                  </div>
+                  {!block.grades || block.grades.length === 0 ? (
+                    <p className="text-xs text-ink-soft italic">Tidak ada nilai pada semester ini.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-[rgba(30,39,50,0.08)] bg-white">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-ink-soft font-bold uppercase tracking-wide">
+                          <tr>
+                            <th className="px-4 py-3">Mata Pelajaran</th>
+                            <th className="px-2 py-3 text-center">Tugas</th>
+                            <th className="px-2 py-3 text-center">UTS</th>
+                            <th className="px-2 py-3 text-center">Remedial</th>
+                            <th className="px-2 py-3 text-center">UAS</th>
+                            <th className="px-3 py-3 text-center">Akhir</th>
+                            <th className="px-3 py-3 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[rgba(30,39,50,0.06)] font-medium">
+                          {block.grades.map((g) => {
+                            const passed = g.final_total !== null && g.final_total !== undefined
+                              ? parseFloat(g.final_total) >= threshold
+                              : null;
+                            return (
+                              <tr key={g.id}>
+                                <td className="px-4 py-3 font-bold text-ink">{g.subject_name}</td>
+                                <td className="px-2 py-3 text-center text-ink-soft">{fmtScore(g.task_score)}</td>
+                                <td className="px-2 py-3 text-center text-ink-soft">{fmtScore(g.midterm_score)}</td>
+                                <td className="px-2 py-3 text-center text-ink-soft">{fmtScore(g.remedial_score)}</td>
+                                <td className="px-2 py-3 text-center text-ink-soft">{fmtScore(g.final_score)}</td>
+                                <td className="px-3 py-3 text-center">
+                                  <span
+                                    className={`px-2.5 py-1 rounded-lg font-extrabold inline-block ${
+                                      passed === null
+                                        ? 'bg-slate-50 text-ink-soft'
+                                        : passed
+                                          ? 'bg-hadir/10 text-hadir'
+                                          : 'bg-alpa/10 text-alpa'
+                                    }`}
+                                  >
+                                    {g.final_total === null || g.final_total === undefined ? '–' : fmtScore(g.final_total)}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3 text-center text-ink-soft font-semibold">
+                                  {STATUS_LABEL[g.status] || g.status || 'Draft'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
               ))}
+            </div>
+          )}
 
-            {!loading && !error && grouped.length > 0 && (
-              <p className="text-[11px] text-ink-soft text-center px-2">
-                Menampilkan semua nilai pada data saat ini. Pengelompokan per tahun ajaran dan semester
-                mengikuti alur nilai baru yang sudah disepakati.
-              </p>
-            )}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold text-ink-soft">
+              Nilai akhir = Tugas 20% + UTS 30% + UAS 50%. Remedial menggantikan UAS bila lebih tinggi.
+            </p>
+            <Link
+              to={`/students/${student.id}/nilai`}
+              className="h-10 px-4 rounded-full bg-marine text-white text-xs font-bold inline-flex items-center hover:bg-marine-deep transition-colors"
+            >
+              Buka Transkrip Nilai
+            </Link>
           </div>
         </div>
       </div>
