@@ -25,6 +25,12 @@ class StudentController extends Controller
             }
         }
 
+        // Status siswa: bawaan hanya yang aktif; alumni/semua lewat parameter
+        $status = $request->input('status', 'aktif');
+        if ($status === 'aktif' || $status === 'alumni') {
+            $query->where('status', $status);
+        }
+
         if ($request->has('class_name') && $request->class_name !== 'Semua Kelas') {
             $query->where('class_name', $request->class_name);
         }
@@ -41,6 +47,111 @@ class StudentController extends Controller
         $data = $query->get();
         \Log::info('StudentController.index - query result count: ' . $data->count());
         return response()->json($data);
+    }
+
+    public function show(Request $request, $id)
+    {
+        $student = Student::where('id', $id)->first();
+        if (!$student) {
+            return response()->json(['message' => 'Siswa tidak ditemukan.'], 404);
+        }
+
+        // Guru mapel: only students in their assigned classes (same scope as index)
+        $user = $request->user();
+        if ($user && $user->role === 'guru') {
+            $assignedClasses = TeacherScope::getAssignedClasses($user);
+            if ($assignedClasses !== null && !in_array($student->class_name, $assignedClasses)) {
+                return response()->json(['message' => 'Anda tidak memiliki akses ke siswa ini.'], 403);
+            }
+        }
+
+        return response()->json($student);
+    }
+
+    /**
+     * Transkrip lengkap siswa: per semester berisi nilai per mapel,
+     * keputusan naik/tinggal/lulus (arsip), dan ringkasan absensi
+     * harian semester itu (hadir, terlambat, sakit, izin, alpa).
+     */
+    public function transcript(Request $request, $id)
+    {
+        $student = Student::where('id', $id)->first();
+        if (!$student) {
+            return response()->json(['message' => 'Siswa tidak ditemukan.'], 404);
+        }
+
+        $user = $request->user();
+        $subjectFilter = null;
+        if ($user && $user->role === 'guru') {
+            $assignedClasses = TeacherScope::getAssignedClasses($user);
+            if ($assignedClasses !== null && !in_array($student->class_name, $assignedClasses)) {
+                return response()->json(['message' => 'Anda tidak memiliki akses ke siswa ini.'], 403);
+            }
+            $subjectFilter = TeacherScope::getAssignedSubjects($user);
+        }
+
+        $blocks = [];
+        $overallSum = 0;
+        $overallCount = 0;
+
+        foreach (\App\Models\Semester::orderBy('start_date')->get() as $semester) {
+            $gradeQuery = \App\Models\SubjectGrade::where('student_id', $student->id)
+                ->where('semester_id', $semester->id);
+            if ($subjectFilter !== null) {
+                $gradeQuery->whereIn('subject_name', $subjectFilter);
+            }
+            $grades = $gradeQuery->orderBy('subject_name')->get();
+
+            $decision = \App\Models\PromotionDecision::where('student_id', $student->id)
+                ->where('semester_id', $semester->id)->first();
+
+            $attendanceRows = Attendance::where('student_id', $student->id)
+                ->where(function ($q) use ($semester) {
+                    $q->where('semester_id', $semester->id)
+                      ->orWhere(function ($q2) use ($semester) {
+                          $q2->whereNull('semester_id')
+                             ->whereBetween('date', [$semester->start_date->format('Y-m-d'), $semester->end_date->format('Y-m-d')]);
+                      });
+                })->get();
+
+            $counts = ['Hadir' => 0, 'Terlambat' => 0, 'Sakit' => 0, 'Izin' => 0, 'Alpa' => 0];
+            foreach ($attendanceRows as $row) {
+                if (isset($counts[$row->status])) {
+                    $counts[$row->status]++;
+                }
+            }
+            $attendanceTotal = array_sum($counts);
+
+            if ($grades->isEmpty() && !$decision && $attendanceTotal === 0) {
+                continue;
+            }
+
+            foreach ($grades as $g) {
+                if ($g->final_total !== null) {
+                    $overallSum += (float) $g->final_total;
+                    $overallCount++;
+                }
+            }
+
+            $blocks[] = [
+                'semester' => array_merge($semester->toArray(), ['label' => $semester->label()]),
+                'grades' => $grades,
+                'decision' => $decision,
+                'attendance' => [
+                    'hadir' => $counts['Hadir'],
+                    'terlambat' => $counts['Terlambat'],
+                    'sakit' => $counts['Sakit'],
+                    'izin' => $counts['Izin'],
+                    'alpa' => $counts['Alpa'],
+                ],
+            ];
+        }
+
+        return response()->json([
+            'student' => $student,
+            'semesters' => $blocks,
+            'overall_average' => $overallCount ? round($overallSum / $overallCount, 1) : null,
+        ]);
     }
 
     public function store(Request $request)
@@ -116,10 +227,34 @@ class StudentController extends Controller
             'name' => 'sometimes|string',
             'class_name' => 'sometimes|string',
             'gender' => 'sometimes|string',
-            'photo_url' => 'sometimes|string',
+            'photo_url' => 'sometimes|nullable|string',
+            // Biodata lengkap (halaman detail siswa)
+            'nisn' => 'sometimes|nullable|string',
+            'nik' => 'sometimes|nullable|string',
+            'no_kk' => 'sometimes|nullable|string',
+            'birth_place' => 'sometimes|nullable|string',
+            'birth_date' => 'sometimes|nullable|date',
+            'religion' => 'sometimes|nullable|string',
+            'address' => 'sometimes|nullable|string',
+            'child_order' => 'sometimes|nullable|integer|min:0',
+            'siblings_count' => 'sometimes|nullable|integer|min:0',
+            'father_name' => 'sometimes|nullable|string',
+            'father_job' => 'sometimes|nullable|string',
+            'mother_name' => 'sometimes|nullable|string',
+            'mother_job' => 'sometimes|nullable|string',
+            'guardian_name' => 'sometimes|nullable|string',
+            'parent_phone' => 'sometimes|nullable|string',
+            'previous_school' => 'sometimes|nullable|string',
+            'enrollment_year' => 'sometimes|nullable|string',
         ]);
 
-        $student->update($request->only(['nis', 'name', 'class_name', 'gender', 'photo_url']));
+        $student->update($request->only([
+            'nis', 'name', 'class_name', 'gender', 'photo_url',
+            'nisn', 'nik', 'no_kk', 'birth_place', 'birth_date', 'religion',
+            'address', 'child_order', 'siblings_count', 'father_name',
+            'father_job', 'mother_name', 'mother_job', 'guardian_name',
+            'parent_phone', 'previous_school', 'enrollment_year',
+        ]));
 
         return response()->json($student);
     }
@@ -138,49 +273,6 @@ class StudentController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Siswa berhasil dihapus.'
-        ]);
-    }
-
-    public function seedDemo()
-    {
-        Student::truncate();
-        Attendance::truncate();
-        SubjectAttendance::truncate();
-
-        $classes = ["X IPA 1", "X IPA 2", "XI IPS 1", "XI IPS 2", "XII MIPA"];
-        $names = [
-            ["Ahmad Fauzi", "L"], ["Siti Rahma", "P"], ["Budi Santoso", "L"],
-            ["Dewi Lestari", "P"], ["Eko Prasetyo", "L"], ["Rina Melati", "P"],
-            ["Joko Widodo", "L"], ["Sri Mulyani", "P"], ["Andi Pratama", "L"],
-            ["Maya Sari", "P"], ["Doni Kusuma", "L"], ["Siska Amelia", "P"]
-        ];
-
-        $seeded = [];
-        $nisCounter = 1001;
-
-        foreach ($names as $idx => [$name, $gender]) {
-            $cls = $classes[$idx % count($classes)];
-            $nis = (string) $nisCounter++;
-            $qr = "SCH-QR-{$nis}-" . strtoupper(explode(' ', $name)[0]);
-
-            $student = Student::create([
-                'id' => (string) Str::uuid(),
-                'nis' => $nis,
-                'name' => $name,
-                'class_name' => $cls,
-                'gender' => $gender,
-                'photo_url' => '',
-                'qr_code' => $qr,
-                'created_at' => now()->toIso8601String(),
-            ]);
-
-            $seeded[] = $student;
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Berhasil generate " . count($seeded) . " siswa demo.",
-            'count' => count($seeded)
         ]);
     }
 
@@ -233,6 +325,7 @@ class StudentController extends Controller
         ]);
 
         $updated = Student::where('class_name', $request->from_class)
+            ->where('status', 'aktif')
             ->update(['class_name' => $request->to_class]);
 
         return response()->json([
