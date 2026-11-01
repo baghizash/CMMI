@@ -5,7 +5,7 @@ import { CLASSES } from '../constants';
 
 export default function ClassPromotionModal({ isOpen, onClose, onPromotionSuccess, notify }) {
   const [fromClass, setFromClass] = useState(CLASSES[0]);
-  const [toClass, setToClass] = useState(CLASSES[1] || 'XI IPA 1');
+  const [toClass, setToClass] = useState(CLASSES[1] || '1B');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,8 +34,8 @@ export default function ClassPromotionModal({ isOpen, onClose, onPromotionSucces
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-backdrop-in">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-pop-in">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
