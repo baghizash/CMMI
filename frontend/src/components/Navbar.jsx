@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  QrCode, LogOut, GraduationCap, Clock, Calendar, KeyRound, UserCog, LayoutDashboard, BookOpen, UserCheck, UserRound
+  QrCode, LogOut, GraduationCap, Clock, Calendar, KeyRound, UserCog, LayoutDashboard, BookOpen, UserCheck, UserRound, Sun, Moon
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 import useSlidingIndicator from '../hooks/useSlidingIndicator';
@@ -56,7 +56,7 @@ function NavRow({ items, isActive, variant }) {
   );
 }
 
-export default function Navbar({ user, onLogout, notify }) {
+export default function Navbar({ user, onLogout, notify, theme, onToggleTheme }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -129,6 +129,15 @@ export default function Navbar({ user, onLogout, notify }) {
             {/* User Profile Controls */}
             {user && (
               <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={onToggleTheme}
+                  title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+                  aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
+                  className="h-11 w-11 grid place-items-center text-ink-soft hover:text-marine hover:bg-marine-tint rounded-full transition-all duration-200 border border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine"
+                >
+                  {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+                </button>
+
                 <button
                   onClick={() => setShowPasswordModal(true)}
                   title="Ganti Password"
