@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Save, X, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, X, GraduationCap, BookOpen } from 'lucide-react';
 import * as api from '../services/api';
 import { CLASSES } from '../constants';
 
@@ -82,6 +82,30 @@ function initials(name) {
 const inputCls =
   'w-full h-11 px-3.5 rounded-2xl bg-[#F4F1EA] border border-[rgba(30,39,50,0.09)] text-sm font-semibold text-ink outline-none focus:ring-2 focus:ring-marine/50 focus:bg-white transition';
 
+// Pilihan tingkat kelas SD dan semester untuk seksi nilai di halaman ini.
+const LEVELS = [1, 2, 3, 4, 5, 6];
+const TERMS = ['Ganjil', 'Genap'];
+
+// Samakan label dan warna badge status batch dengan halaman nilai.
+const GRADE_STATUS_META = {
+  draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-600' },
+  submitted: { label: 'Terkirim', cls: 'bg-sky-100 text-sky-800' },
+  verified: { label: 'Terverifikasi', cls: 'bg-violet-100 text-violet-800' },
+  locked: { label: 'Terkunci', cls: 'bg-emerald-100 text-emerald-800' },
+};
+
+// Tingkat kelas dari nama kelas, mis. "1A" menjadi 1.
+function levelOf(className) {
+  const m = String(className || '').match(/^\s*(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function fmtScore(v) {
+  if (v === null || v === undefined || v === '') return '\u2014';
+  const n = Number(v);
+  return Number.isNaN(n) ? String(v) : String(n);
+}
+
 export default function StudentDetailPage({ user, notify }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -114,6 +138,97 @@ export default function StudentDetailPage({ user, notify }) {
       alive = false;
     };
   }, [id]);
+
+  // ---- Nilai per kelas dan semester -------------------------------------
+  const [grades, setGrades] = useState([]);
+  const [semesters, setSemesters] = useState([]);
+  const [gradesLoading, setGradesLoading] = useState(true);
+  const [selLevel, setSelLevel] = useState(null);
+  const [selTerm, setSelTerm] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setGradesLoading(true);
+      try {
+        const res = await api.getStudentGrades(id);
+        if (alive) setGrades(Array.isArray(res.data) ? res.data : []);
+      } catch (e) {
+        if (alive) setGrades([]);
+      }
+      try {
+        const res = await api.getSemesters();
+        const list = res.data?.data ?? res.data;
+        if (alive) setSemesters(Array.isArray(list) ? list : []);
+      } catch (e) {
+        if (alive) setSemesters([]);
+      } finally {
+        if (alive) setGradesLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  const semesterById = useMemo(() => {
+    const map = {};
+    semesters.forEach((s) => {
+      map[s.id] = s;
+    });
+    return map;
+  }, [semesters]);
+
+  const activeTerm = useMemo(() => {
+    const active = semesters.find((s) => s.is_active);
+    return active && TERMS.includes(active.name) ? active.name : 'Ganjil';
+  }, [semesters]);
+
+  // Tingkat kelas siswa saat ini; tingkat di atasnya tidak bisa dipilih.
+  const currentLevel = useMemo(() => {
+    const parsed = levelOf(student?.class_name);
+    if (parsed) return parsed;
+    const fromGrades = grades.map((g) => levelOf(g.class_name)).filter(Boolean);
+    return fromGrades.length ? Math.max(...fromGrades) : LEVELS[LEVELS.length - 1];
+  }, [student, grades]);
+
+  // Pilihan awal: kelas siswa saat ini dan semester yang sedang aktif.
+  useEffect(() => {
+    if (!student || selLevel !== null) return;
+    const parsed = levelOf(student.class_name);
+    if (parsed) setSelLevel(parsed);
+    if (!selTerm) setSelTerm(activeTerm);
+  }, [student, semesters, selLevel, selTerm, activeTerm]);
+
+  const selectLevel = (lvl) => {
+    setSelLevel(lvl);
+    if (!selTerm) setSelTerm(activeTerm);
+  };
+
+  // Nilai untuk tingkat + semester terpilih. Bila satu tingkat dan
+  // semester cocok dengan dua tahun ajaran (siswa tinggal kelas), yang
+  // ditampilkan tahun ajaran paling baru.
+  const gradeView = useMemo(() => {
+    const empty = { rows: [], year: null, className: null };
+    if (!selLevel || !selTerm) return empty;
+    const matched = grades.filter((g) => {
+      if (levelOf(g.class_name) !== selLevel) return false;
+      const sem = semesterById[g.semester_id];
+      return sem && sem.name === selTerm;
+    });
+    if (!matched.length) return empty;
+    const byYear = {};
+    matched.forEach((g) => {
+      const sem = semesterById[g.semester_id];
+      const key = sem.academic_year || '';
+      if (!byYear[key]) byYear[key] = { year: key, start: sem.start_date || '', rows: [] };
+      byYear[key].rows.push(g);
+    });
+    const groups = Object.values(byYear).sort((a, b) => (a.start < b.start ? 1 : -1));
+    const top = groups[0];
+    const rows = [...top.rows].sort((a, b) => String(a.subject_name).localeCompare(String(b.subject_name)));
+    return { rows, year: top.year || null, className: rows[0]?.class_name || null };
+  }, [grades, semesterById, selLevel, selTerm]);
 
   const startEdit = () => {
     const f = {};
@@ -284,6 +399,121 @@ export default function StudentDetailPage({ user, notify }) {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Nilai per kelas dan semester */}
+      <section aria-label="Nilai siswa per kelas dan semester" className="bg-white rounded-[28px] border border-[rgba(30,39,50,0.07)] shadow-tactile overflow-hidden">
+        <header className="px-6 py-4 border-b border-[rgba(30,39,50,0.06)]">
+          <h2 className="inline-flex items-center gap-2 text-sm font-extrabold text-ink">
+            <BookOpen className="w-4 h-4 text-marine" /> Nilai per Kelas dan Semester
+          </h2>
+          <p className="text-xs font-semibold text-ink-soft mt-1">
+            Pilih kelas, lalu pilih semester ganjil atau genap untuk melihat nilainya. Kelas di atas kelas siswa saat ini belum bisa dibuka.
+          </p>
+        </header>
+
+        <div className="px-6 py-5 space-y-4">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-[26px] bg-[#EDF0F4] p-1.5" role="group" aria-label="Pilih kelas dan semester">
+            {LEVELS.map((lvl) => {
+              if (lvl > currentLevel) {
+                return (
+                  <button
+                    key={lvl}
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    title={`Kelas ${lvl} belum ditempuh`}
+                    className="h-10 px-4 rounded-full text-sm font-bold text-slate-400 cursor-not-allowed opacity-60"
+                  >
+                    Kelas {lvl}
+                  </button>
+                );
+              }
+              if (lvl !== selLevel) {
+                return (
+                  <button
+                    key={lvl}
+                    type="button"
+                    onClick={() => selectLevel(lvl)}
+                    className="h-10 px-4 rounded-full text-sm font-bold text-ink-soft hover:text-ink transition-colors"
+                  >
+                    Kelas {lvl}
+                  </button>
+                );
+              }
+              return (
+                <div key={lvl} className="flex grow items-center gap-1 rounded-full bg-white p-1 shadow-sm transition-all duration-300">
+                  <span className="inline-flex h-9 items-center px-4 rounded-full bg-marine text-white text-sm font-bold whitespace-nowrap">
+                    Kelas {lvl}
+                  </span>
+                  {TERMS.map((term) => (
+                    <button
+                      key={term}
+                      type="button"
+                      onClick={() => setSelTerm(term)}
+                      aria-pressed={selTerm === term}
+                      className={
+                        selTerm === term
+                          ? 'h-9 px-4 rounded-full bg-marine-deep text-white text-sm font-bold transition-colors'
+                          : 'h-9 px-4 rounded-full text-sm font-bold text-ink-soft hover:text-ink transition-colors'
+                      }
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          {gradesLoading ? (
+            <p className="text-sm font-semibold text-ink-soft">Memuat nilai...</p>
+          ) : gradeView.rows.length ? (
+            <div>
+              <p className="text-[13px] font-bold text-ink">
+                Kelas {selLevel} · Semester {selTerm}
+                {gradeView.year ? ` · Tahun Ajaran ${gradeView.year}` : ''}
+                {gradeView.className ? ` · ${gradeView.className}` : ''}
+              </p>
+              <div className="overflow-x-auto mt-2">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] font-extrabold uppercase tracking-wider text-ink-soft border-b border-[rgba(30,39,50,0.08)]">
+                      <th className="py-2 pr-3">Mata Pelajaran</th>
+                      <th className="py-2 px-2 text-center">Tugas</th>
+                      <th className="py-2 px-2 text-center">UTS</th>
+                      <th className="py-2 px-2 text-center">Remedial</th>
+                      <th className="py-2 px-2 text-center">UAS</th>
+                      <th className="py-2 px-2 text-center">Nilai Akhir</th>
+                      <th className="py-2 pl-2 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gradeView.rows.map((g) => (
+                      <tr key={g.id} className="border-b border-[rgba(30,39,50,0.05)] last:border-0">
+                        <td className="py-2.5 pr-3 font-semibold text-ink">{g.subject_name}</td>
+                        <td className="py-2.5 px-2 text-center font-semibold text-ink">{fmtScore(g.task_score)}</td>
+                        <td className="py-2.5 px-2 text-center font-semibold text-ink">{fmtScore(g.midterm_score)}</td>
+                        <td className="py-2.5 px-2 text-center font-semibold text-ink">{fmtScore(g.remedial_score)}</td>
+                        <td className="py-2.5 px-2 text-center font-semibold text-ink">{fmtScore(g.final_score)}</td>
+                        <td className="py-2.5 px-2 text-center font-extrabold text-ink">{fmtScore(g.final_total)}</td>
+                        <td className="py-2.5 pl-2 text-center">
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${(GRADE_STATUS_META[g.status] || GRADE_STATUS_META.draft).cls}`}>
+                            {(GRADE_STATUS_META[g.status] || GRADE_STATUS_META.draft).label}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : selLevel && selTerm ? (
+            <p className="text-sm font-semibold text-ink-soft">
+              Belum ada nilai untuk Kelas {selLevel} Semester {selTerm}.
+            </p>
+          ) : null}
         </div>
       </section>
     </div>
