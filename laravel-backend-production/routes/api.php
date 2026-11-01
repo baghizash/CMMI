@@ -16,7 +16,6 @@ use App\Http\Controllers\Api\TeacherAssignmentController;
 use App\Http\Controllers\Api\SemesterController;
 use App\Http\Controllers\Api\HomeroomTeacherController;
 use App\Http\Controllers\Api\PromotionController;
-use App\Http\Controllers\Api\ParentViewController;
 use App\Http\Middleware\CheckRole;
 
 // Public routes - CSRF exempt
@@ -130,7 +129,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/grades/batch/unlock', [\App\Http\Controllers\Api\SubjectGradeController::class, 'unlockBatch']);
     Route::get('/grades/student/{id}', [\App\Http\Controllers\Api\SubjectGradeController::class, 'studentGrades']);
     Route::post('/grades', [\App\Http\Controllers\Api\SubjectGradeController::class, 'store']);
-
-    // Tampilan orang tua (hanya-lihat, pratinjau staf — belum ada akun orang tua)
-    Route::get('/parent-view/students/{id}', [ParentViewController::class, 'show']);
 });
