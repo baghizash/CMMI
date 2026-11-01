@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GraduationCap, BookOpen, Save, Eye, UserCheck, TrendingUp, Send } from 'lucide-react';
 import * as api from '../services/api';
-import SlidingTabBar from '../components/SlidingTabBar';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 import StudentCardModal from '../components/StudentCardModal';
@@ -160,6 +159,11 @@ export default function TeacherWorkspacePage({ user, notify }) {
     }
   };
 
+  const pillCls = (active) =>
+    `px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2 ${
+      active ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-200/50'
+    }`;
+
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       {/* Header + pill toggle */}
@@ -171,18 +175,19 @@ export default function TeacherWorkspacePage({ user, notify }) {
             {scope.classes.length > 0 && <> · {scope.classes.join(', ')}</>}
           </p>
         </div>
-        <SlidingTabBar
-          ariaLabel="Pilih fitur"
-          activeKey={tab}
-          onChange={setTab}
-          items={[
-            { key: 'data', label: 'Data Siswa', icon: <GraduationCap className="w-4 h-4" />, color: '#4F46E5' },
-            { key: 'nilai', label: 'Nilai Siswa', icon: <BookOpen className="w-4 h-4" />, color: '#4F46E5' },
-            ...((scope.homeroom_classes || []).length > 0
-              ? [{ key: 'keputusan', label: 'Keputusan Naik Kelas', icon: <TrendingUp className="w-4 h-4" />, color: '#4F46E5' }]
-              : []),
-          ]}
-        />
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60" role="tablist" aria-label="Pilih fitur">
+          <button type="button" role="tab" aria-selected={tab === 'data'} onClick={() => setTab('data')} className={pillCls(tab === 'data')}>
+            <GraduationCap className="w-4 h-4" /> Data Siswa
+          </button>
+          <button type="button" role="tab" aria-selected={tab === 'nilai'} onClick={() => setTab('nilai')} className={pillCls(tab === 'nilai')}>
+            <BookOpen className="w-4 h-4" /> Nilai Siswa
+          </button>
+          {(scope.homeroom_classes || []).length > 0 && (
+            <button type="button" role="tab" aria-selected={tab === 'keputusan'} onClick={() => setTab('keputusan')} className={pillCls(tab === 'keputusan')}>
+              <TrendingUp className="w-4 h-4" /> Keputusan Naik Kelas
+            </button>
+          )}
+        </div>
       </div>
 
       {tab === 'data' && (

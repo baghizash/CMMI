@@ -16,6 +16,7 @@ const BIODATA_FIELDS = [
 import ImportStudentsModal from '../components/ImportStudentsModal';
 import ClassPromotionModal from '../components/ClassPromotionModal';
 import StudentCardModal from '../components/StudentCardModal';
+import StudentGradesModal from '../components/StudentGradesModal';
 import PaginationBar from '../components/PaginationBar';
 import usePagination from '../hooks/usePagination';
 
@@ -32,6 +33,7 @@ export default function StudentsPage({ notify }) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [cardStudent, setCardStudent] = useState(null);
+  const [gradesStudent, setGradesStudent] = useState(null);
   const studentPager = usePagination(students, 5, [selectedClass, searchQuery, selectedStatus]);
 
   const [newStudent, setNewStudent] = useState({
@@ -227,7 +229,7 @@ export default function StudentsPage({ notify }) {
                         <Eye className="w-3.5 h-3.5" /> Detail
                       </button>
                       <button
-                        onClick={() => navigate(`/students/${st.id}/nilai`)}
+                        onClick={() => setGradesStudent(st)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-tang/10 hover:bg-tang/15 text-tang-dark rounded-full font-bold text-[11px] transition-colors"
                       >
                         <BookOpen className="w-3.5 h-3.5" /> Nilai
@@ -343,7 +345,10 @@ export default function StudentsPage({ notify }) {
         <StudentCardModal student={cardStudent} onClose={() => setCardStudent(null)} />
       )}
 
-      {/* Grade detail popout: separate window */}
+      {/* Grade detail popout: separate window from the student card */}
+      {gradesStudent && (
+        <StudentGradesModal student={gradesStudent} onClose={() => setGradesStudent(null)} notify={notify} />
+      )}
 
       {/* Class Promotion Modal */}
       <ClassPromotionModal

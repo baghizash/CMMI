@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, ClipboardList } from 'lucide-react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, BookOpen, ClipboardList, Users } from 'lucide-react';
 import * as api from '../services/api';
 
 // Transkrip nilai siswa (hanya untuk melihat, tidak ada input di sini).
@@ -152,6 +152,12 @@ export default function StudentTranscriptPage({ notify }) {
             {overall !== null && ` · Rata-rata keseluruhan ${fmt(overall)}`}
           </p>
         </div>
+        <Link
+          to={`/orang-tua/${student.id}`}
+          className="ml-auto h-10 px-4 rounded-full bg-plum/10 hover:bg-plum/15 text-plum text-xs font-bold inline-flex items-center gap-2 transition-colors"
+        >
+          <Users className="w-4 h-4" /> Tampilan Orang Tua
+        </Link>
       </div>
 
       {blocks.length === 0 ? (

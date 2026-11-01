@@ -10,6 +10,7 @@ import ScannerPage from './pages/ScannerPage';
 import StudentsPage from './pages/StudentsPage';
 import StudentDetailPage from './pages/StudentDetailPage';
 import StudentTranscriptPage from './pages/StudentTranscriptPage';
+import ParentViewPage from './pages/ParentViewPage';
 import TeacherWorkspacePage from './pages/TeacherWorkspacePage';
 import RecapPage from './pages/RecapPage';
 import SchedulePage from './pages/SchedulePage';
@@ -99,6 +100,10 @@ function AppContent() {
           <Route
             path="/students/:id/nilai"
             element={user ? <StudentTranscriptPage notify={notify} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/orang-tua/:studentId"
+            element={user ? <ParentViewPage notify={notify} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/grades"

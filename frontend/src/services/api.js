@@ -143,6 +143,15 @@ export const postBatchGrades = (data) => apiClient.post('/api/grades/batch', dat
 export const getStudentGrades = (studentId) => apiClient.get(`/api/grades/student/${studentId}`);
 export const postGrade = (data) => apiClient.post('/api/grades', data);
 
+// Grade batch workflow: draft -> submitted -> verified -> locked
+export const submitGradesBatch = (data) => apiClient.post('/api/grades/batch/submit', data);
+export const verifyGradesBatch = (data) => apiClient.post('/api/grades/batch/verify', data);
+export const lockGradesBatch = (data) => apiClient.post('/api/grades/batch/lock', data);
+export const unlockGradesBatch = (data) => apiClient.post('/api/grades/batch/unlock', data);
+
+// Parent view (read-only preview)
+export const getParentView = (studentId) => apiClient.get(`/api/parent-view/students/${studentId}`);
+
 // Semesters APIs
 export const getSemesters = () => apiClient.get('/api/semesters');
 export const getActiveSemester = () => apiClient.get('/api/semesters/active');

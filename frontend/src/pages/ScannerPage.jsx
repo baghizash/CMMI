@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { QrCode, Camera, Search, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import * as api from '../services/api';
-import SlidingTabBar from '../components/SlidingTabBar';
 import { SUBJECTS } from '../constants';
 
 export default function ScannerPage({ user, notify }) {
@@ -152,20 +151,39 @@ export default function ScannerPage({ user, notify }) {
           </p>
         </div>
 
-        <SlidingTabBar
-          ariaLabel="Mode absensi"
-          activeKey={scanMode}
-          onChange={(key) => { setScanMode(key); stopScanner(); }}
-          items={[
-            ...(canDaily
-              ? [
-                  { key: 'masuk', label: 'Absen Masuk', color: '#059669' },
-                  { key: 'pulang', label: 'Absen Pulang', color: '#D97706' },
-                ]
-              : []),
-            ...(isGuruMapel ? [{ key: 'mapel', label: 'Absen Mapel', color: '#4F46E5' }] : []),
-          ]}
-        />
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60">
+          {canDaily && (
+            <>
+              <button
+                onClick={() => { setScanMode('masuk'); stopScanner(); }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  scanMode === 'masuk' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-slate-600 hover:bg-slate-200/50'
+                }`}
+              >
+                Absen Masuk
+              </button>
+              <button
+                onClick={() => { setScanMode('pulang'); stopScanner(); }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  scanMode === 'pulang' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20' : 'text-slate-600 hover:bg-slate-200/50'
+                }`}
+              >
+                Absen Pulang
+              </button>
+            </>
+          )}
+
+          {isGuruMapel && (
+            <button
+              onClick={() => { setScanMode('mapel'); stopScanner(); }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                scanMode === 'mapel' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-200/50'
+              }`}
+            >
+              Absen Mapel
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Config for Subject Scan */}

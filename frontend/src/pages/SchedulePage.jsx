@@ -5,7 +5,6 @@ import { confirmDialog } from '../components/ConfirmDialog';
 import { CLASSES, DAYS, SUBJECTS } from '../constants';
 import TeacherAssignmentsPanel from '../components/TeacherAssignmentsPanel';
 import HomeroomAssignmentsPanel from '../components/HomeroomAssignmentsPanel';
-import SlidingTabBar from '../components/SlidingTabBar';
 
 export default function SchedulePage({ user, notify }) {
 
@@ -152,20 +151,39 @@ export default function SchedulePage({ user, notify }) {
           <p className="text-xs font-semibold text-slate-500 mt-0.5">Jadwal pelajaran dan penugasan guru dalam satu halaman</p>
         </div>
 
-        <SlidingTabBar
-          ariaLabel="Pilih fitur"
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={[
-            { key: 'jadwal', label: 'Jadwal Mapel', color: '#4F46E5' },
-            ...(user?.role === 'admin'
-              ? [
-                  { key: 'mapel', label: 'Penugasan Guru Mapel', color: '#D97706' },
-                  { key: 'wali', label: 'Penugasan Wali Kelas', color: '#6D3B8A' },
-                ]
-              : []),
-          ]}
-        />
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60" role="tablist" aria-label="Pilih fitur">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'jadwal'}
+            onClick={() => setActiveTab('jadwal')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'jadwal' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-200/50'}`}
+          >
+            Jadwal Mapel
+          </button>
+          {user?.role === 'admin' && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'mapel'}
+              onClick={() => setActiveTab('mapel')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'mapel' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20' : 'text-slate-600 hover:bg-slate-200/50'}`}
+            >
+              Penugasan Guru Mapel
+            </button>
+          )}
+          {user?.role === 'admin' && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'wali'}
+              onClick={() => setActiveTab('wali')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'wali' ? 'bg-plum text-white shadow-md shadow-purple-600/20' : 'text-slate-600 hover:bg-slate-200/50'}`}
+            >
+              Penugasan Wali Kelas
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tab panels */}
