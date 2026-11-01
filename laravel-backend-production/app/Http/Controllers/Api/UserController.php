@@ -28,7 +28,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'username' => 'required|string|max:255|unique:users,username',
             'password' => 'required|string|min:6',
-            'role' => 'required|string|in:admin,kepsek,guru,guru_piket',
+            'role' => 'required|string|in:admin,kepsek,guru',
         ]);
 
         $user = User::create([
@@ -58,7 +58,7 @@ class UserController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'username' => 'sometimes|required|string|max:255|unique:users,username,' . $id,
             'password' => 'nullable|string|min:6',
-            'role' => 'sometimes|required|string|in:admin,kepsek,guru,guru_piket',
+            'role' => 'sometimes|required|string|in:admin,kepsek,guru',
         ]);
 
         if ($request->has('name')) {
