@@ -18,6 +18,7 @@ class Attendance extends Model
         'student_name',
         'class_name',
         'date',
+        'semester_id',
         'time',
         'time_out',
         'check_out_by',
