@@ -4,6 +4,57 @@ import {
   QrCode, LogOut, GraduationCap, Clock, Calendar, KeyRound, UserCog, LayoutDashboard, BookOpen, UserCheck, UserRound
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
+import useSlidingIndicator from '../hooks/useSlidingIndicator';
+
+// Satu baris tautan navigasi dengan pil marine yang MELUNCUR ke
+// tautan aktif (bukan muncul/hilang sekejap). Dipakai dua kali:
+// baris desktop di dalam header dan baris mobile di bawahnya.
+function NavRow({ items, isActive, variant }) {
+  const activeItem = items.find((i) => isActive(i.path));
+  const { containerRef, registerItem, box } = useSlidingIndicator(
+    activeItem?.path,
+    items.map((i) => i.path).join(',')
+  );
+  const isDesktop = variant === 'desktop';
+  return (
+    <nav
+      ref={containerRef}
+      className={
+        isDesktop
+          ? 'relative hidden md:flex flex-nowrap items-center gap-1 bg-[#EFEAE0]/90 p-1 rounded-full border border-[rgba(30,39,50,0.05)] overflow-x-auto no-scrollbar min-w-0'
+          : 'relative md:hidden flex overflow-x-auto px-4 py-2 border-t border-[rgba(30,39,50,0.06)] gap-1.5 no-scrollbar'
+      }
+      aria-label="Menu utama"
+    >
+      {box && (
+        <span
+          aria-hidden="true"
+          className="sliding-indicator rounded-full bg-marine"
+          style={{ transform: `translateX(${box.x}px)`, width: box.w, top: isDesktop ? 4 : 8, bottom: isDesktop ? 4 : 8 }}
+        />
+      )}
+      {items.map((item) => (
+        <Link
+          key={item.path}
+          ref={registerItem(item.path)}
+          to={item.path}
+          aria-current={isActive(item.path) ? 'page' : undefined}
+          className={`group relative z-10 flex items-center gap-2 shrink-0 whitespace-nowrap rounded-full text-xs font-semibold transition-colors duration-200 active:scale-[0.97] ${
+            isDesktop ? 'px-3 h-11' : 'px-3.5 min-h-[44px] gap-1.5'
+          } ${
+            isActive(item.path)
+              ? 'text-white font-bold'
+              : 'text-ink-soft hover:text-ink'
+          }`}
+          style={{ transitionDelay: isActive(item.path) ? '60ms' : '0ms' }}
+        >
+          {item.icon}
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
 
 export default function Navbar({ user, onLogout, notify }) {
   const location = useLocation();
@@ -73,24 +124,7 @@ export default function Navbar({ user, onLogout, notify }) {
               </div>
             </Link>
 
-            {/* Nav Tabs */}
-            <nav className="hidden md:flex flex-nowrap items-center gap-1 bg-[#EFEAE0]/90 p-1 rounded-full border border-[rgba(30,39,50,0.05)] overflow-x-auto no-scrollbar min-w-0" aria-label="Menu utama">
-              {navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  aria-current={isActive(item.path) ? 'page' : undefined}
-                  className={`group flex items-center gap-2 px-3 h-11 shrink-0 whitespace-nowrap rounded-full text-xs font-semibold transition-all duration-200 ${
-                    isActive(item.path)
-                      ? 'bg-marine text-white shadow-tactile font-bold'
-                      : 'text-ink-soft hover:text-ink hover:bg-white/80'
-                  }`}
-                >
-                  {item.icon}
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
+            <NavRow items={navItems} isActive={isActive} variant="desktop" />
 
             {/* User Profile Controls */}
             {user && (
@@ -152,24 +186,7 @@ export default function Navbar({ user, onLogout, notify }) {
           </div>
         </div>
 
-        {/* Mobile Navigation Row */}
-        <div className="md:hidden flex overflow-x-auto px-4 py-2 border-t border-[rgba(30,39,50,0.06)] gap-1.5 no-scrollbar">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              aria-current={isActive(item.path) ? 'page' : undefined}
-              className={`group flex items-center gap-1.5 whitespace-nowrap px-3.5 min-h-[44px] rounded-full text-xs font-semibold transition-all duration-200 ${
-                isActive(item.path)
-                  ? 'bg-marine text-white shadow-tactile'
-                  : 'text-ink-soft hover:bg-[#EFEAE0]'
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
-        </div>
+        <NavRow items={navItems} isActive={isActive} variant="mobile" />
       </header>
 
       <ChangePasswordModal
