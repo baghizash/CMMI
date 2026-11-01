@@ -1,13 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Save, UserCheck, Shield, Plus, Trash2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Save, RefreshCw, Send, ShieldCheck, Lock, Undo2 } from 'lucide-react';
 import * as api from '../services/api';
-import PaginationBar from '../components/PaginationBar';
-import usePagination from '../hooks/usePagination';
 import { CLASSES, SUBJECTS } from '../constants';
 
-export default function GradesPage({ user, notify }) {
-  const [activeSubTab, setActiveSubTab] = useState('input_grades'); // 'input_grades' | 'assignments'
+// Ambang tuntas yang sama dengan SubjectGrade::PASS_THRESHOLD di backend.
+const PASS_THRESHOLD = 75;
 
+// Lencana status batch nilai.
+const STATUS_META = {
+  draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-600' },
+  submitted: { label: 'Terkirim', cls: 'bg-sky-100 text-sky-800' },
+  verified: { label: 'Terverifikasi', cls: 'bg-violet-100 text-violet-800' },
+  locked: { label: 'Terkunci', cls: 'bg-emerald-100 text-emerald-800' },
+  mixed: { label: 'Status tidak seragam', cls: 'bg-amber-100 text-amber-800' },
+};
+
+// Pratinjau nilai akhir berbobot, meniru rumus server (sumber kebenaran
+// tetap SubjectGrade::computeFinalTotal): Tugas 20%, UTS 30%, UAS 50%.
+// Remedial menggantikan UAS bila lebih tinggi. Komponen kosong dikeluarkan
+// dan bobot sisanya dinormalisasi.
+function computeWeightedFinal(row) {
+  const num = (v) => (v === '' || v === null || v === undefined || Number.isNaN(parseFloat(v)) ? null : parseFloat(v));
+  const task = num(row.task_score);
+  const midterm = num(row.midterm_score);
+  const remedial = num(row.remedial_score);
+  let exam = num(row.final_score);
+  if (remedial !== null && (exam === null || remedial > exam)) exam = remedial;
+  const parts = [];
+  if (task !== null) parts.push([0.2, task]);
+  if (midterm !== null) parts.push([0.3, midterm]);
+  if (exam !== null) parts.push([0.5, exam]);
+  if (parts.length === 0) return null;
+  const weightSum = parts.reduce((a, [w]) => a + w, 0);
+  return Math.round((parts.reduce((a, [w, v]) => a + w * v, 0) / weightSum) * 10) / 10;
+}
+
+export default function GradesPage({ user, notify }) {
   // Teacher Scope State
   const [scope, setScope] = useState({ is_admin: true, classes: [], subjects: [], assignments: [] });
   const [selectedClass, setSelectedClass] = useState(CLASSES[0]);
@@ -18,16 +46,25 @@ export default function GradesPage({ user, notify }) {
   const [loadingGrades, setLoadingGrades] = useState(false);
   const [savingGrades, setSavingGrades] = useState(false);
 
-  // Admin Teacher Assignments State
-  const [assignments, setAssignments] = useState([]);
-  const assignmentPager = usePagination(assignments, 5, [activeSubTab]);
-  const [usersList, setUsersList] = useState([]);
-  const [newAssignment, setNewAssignment] = useState({
-    user_id: '',
-    teacher_name: '',
-    class_name: CLASSES[0],
-    subject_name: SUBJECTS[0],
-  });
+  // Semester context + batch workflow state
+  const [activeSemester, setActiveSemester] = useState(null);
+  const [batchStatus, setBatchStatus] = useState('draft');
+  const [transitionBusy, setTransitionBusy] = useState(false);
+
+  const isAdminType = user && (user.role === 'admin' || user.role === 'kepsek');
+  const canEdit = batchStatus === 'draft';
+
+  // Fetch active semester (konteks semua nilai di halaman ini)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.getActiveSemester();
+        setActiveSemester(res.data?.data || null);
+      } catch (e) {
+        console.error('Failed fetching active semester', e);
+      }
+    })();
+  }, []);
 
   // Fetch Teacher Scope
   useEffect(() => {
@@ -57,6 +94,7 @@ export default function GradesPage({ user, notify }) {
     try {
       const res = await api.getGroupedGrades({ class_name: selectedClass, subject_name: selectedSubject });
       setStudentsGrades(res.data.students || []);
+      setBatchStatus(res.data.batch_status || 'draft');
     } catch (e) {
       console.error('Failed fetching grouped grades', e);
       notify && notify('error', e.response?.data?.message || 'Gagal memuat data nilai murid.');
@@ -70,57 +108,11 @@ export default function GradesPage({ user, notify }) {
     fetchGroupedGrades();
   }, [selectedClass, selectedSubject]);
 
-  // Fetch Assignments for Admin
-  const fetchAssignments = async () => {
-    if (user?.role !== 'admin') return;
-    try {
-      const [assRes, uRes] = await Promise.all([api.getTeacherAssignments(), api.getUsers()]);
-      const fetchedUsers = uRes.data.data || [];
-      setAssignments(assRes.data.data || []);
-      setUsersList(fetchedUsers);
-
-      if (fetchedUsers.length > 0) {
-        setNewAssignment((prev) => ({
-          ...prev,
-          user_id: prev.user_id || fetchedUsers[0].id,
-          teacher_name: prev.teacher_name || fetchedUsers[0].name,
-        }));
-      }
-    } catch (e) {
-      console.error('Failed fetching assignments', e);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      fetchAssignments();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (activeSubTab === 'assignments') {
-      fetchAssignments();
-    }
-  }, [activeSubTab]);
-
   // Handle local state change in matrix table input
   const handleScoreChange = (index, field, value) => {
     const updated = [...studentsGrades];
     updated[index][field] = value;
-
-    // Auto-recalculate final total (average of non-empty scores)
-    const scores = [];
-    ['task_score', 'midterm_score', 'remedial_score', 'final_score'].forEach((f) => {
-      const v = updated[index][f];
-      if (v !== '' && v !== null && v !== undefined && !isNaN(parseFloat(v))) {
-        scores.push(parseFloat(v));
-      }
-    });
-
-    updated[index].final_total = scores.length
-      ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
-      : null;
-
+    updated[index].final_total = computeWeightedFinal(updated[index]);
     setStudentsGrades(updated);
   };
 
@@ -149,31 +141,23 @@ export default function GradesPage({ user, notify }) {
     }
   };
 
-  // Add Teacher Assignment (Admin)
-  const handleCreateAssignment = async (e) => {
-    e.preventDefault();
+  // Workflow transitions: submit / verify / lock / unlock (server-enforced)
+  const handleTransition = async (action) => {
+    const calls = {
+      submit: api.submitGradesBatch,
+      verify: api.verifyGradesBatch,
+      lock: api.lockGradesBatch,
+      unlock: api.unlockGradesBatch,
+    };
+    setTransitionBusy(true);
     try {
-      const selectedUserObj = usersList.find((u) => u.id === newAssignment.user_id);
-      await api.createTeacherAssignment({
-        ...newAssignment,
-        teacher_name: selectedUserObj ? selectedUserObj.name : newAssignment.teacher_name,
-      });
-      notify && notify('success', 'Penugasan guru mapel berhasil disimpan.');
-      fetchAssignments();
+      const res = await calls[action]({ class_name: selectedClass, subject_name: selectedSubject });
+      notify && notify('success', res.data.message || 'Status nilai berhasil diperbarui.');
+      fetchGroupedGrades();
     } catch (err) {
-      notify && notify('error', err.response?.data?.message || 'Gagal menambah penugasan guru.');
-    }
-  };
-
-  // Delete Teacher Assignment (Admin)
-  const handleDeleteAssignment = async (id) => {
-    if (!window.confirm('Hapus penugasan guru ini?')) return;
-    try {
-      await api.deleteTeacherAssignment(id);
-      notify && notify('success', 'Penugasan berhasil dihapus.');
-      fetchAssignments();
-    } catch (e) {
-      notify && notify('error', 'Gagal menghapus penugasan.');
+      notify && notify('error', err.response?.data?.message || 'Gagal memperbarui status nilai.');
+    } finally {
+      setTransitionBusy(false);
     }
   };
 
@@ -189,37 +173,18 @@ export default function GradesPage({ user, notify }) {
           <p className="text-xs font-semibold text-slate-500 mt-0.5">
             Pengelompokan Matriks Nilai: <span className="font-bold text-indigo-600">Kelas ➔ Mata Pelajaran ➔ Daftar Murid</span>
           </p>
+          <p className="text-xs font-semibold text-slate-500 mt-1">
+            Semester Aktif:{' '}
+            <span className="font-bold text-slate-800">
+              {activeSemester ? activeSemester.label : 'belum diatur'}
+            </span>{' '}
+            · Nilai akhir = Tugas 20% + UTS 30% + UAS 50% (remedial menggantikan UAS bila lebih tinggi), tuntas ≥ {PASS_THRESHOLD}
+          </p>
         </div>
 
-        {/* Sub-tab switcher for Admin */}
-        {user?.role === 'admin' && (
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60">
-            <button
-              onClick={() => setActiveSubTab('input_grades')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeSubTab === 'input_grades'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-600 hover:bg-slate-200/50'
-              }`}
-            >
-              Matriks Nilai Murid
-            </button>
-            <button
-              onClick={() => setActiveSubTab('assignments')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeSubTab === 'assignments'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
-                  : 'text-slate-600 hover:bg-slate-200/50'
-              }`}
-            >
-              Penugasan Guru Mapel
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* VIEW 1: MATRIX INPUT GRADES (Kelas -> Mapel -> Murid) */}
-      {activeSubTab === 'input_grades' && (
+      {/* MATRIX INPUT GRADES (Kelas -> Mapel -> Murid) */}
         <div className="space-y-6">
           {/* Class & Subject Hierarchy Selectors */}
           <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
@@ -252,30 +217,71 @@ export default function GradesPage({ user, notify }) {
             <div className="sm:col-span-2 lg:col-span-1 flex justify-end pt-5">
               <button
                 onClick={handleSaveBatchGrades}
-                disabled={savingGrades || studentsGrades.length === 0}
+                disabled={savingGrades || studentsGrades.length === 0 || !canEdit}
                 className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <Save className="w-4 h-4" /> {savingGrades ? 'Menyimpan...' : 'Simpan Semua Nilai Kelas'}
+                <Save className="w-4 h-4" /> {savingGrades ? 'Menyimpan...' : 'Simpan Draft'}
               </button>
             </div>
           </div>
 
           {/* Matrix Student Grades Table */}
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-sm">
                   Daftar Murid {selectedClass} — Mapel: <span className="text-indigo-600 font-black">{selectedSubject}</span>
                 </h3>
                 <p className="text-[11px] text-slate-500">Total {studentsGrades.length} Murid</p>
               </div>
-              <button
-                onClick={fetchGroupedGrades}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl"
-                title="Refresh Data Nilai"
-              >
-                <RefreshCw className={`w-4 h-4 ${loadingGrades ? 'animate-spin' : ''}`} />
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-3 py-1.5 rounded-full text-[11px] font-extrabold ${STATUS_META[batchStatus]?.cls || STATUS_META.draft.cls}`}>
+                  Status: {STATUS_META[batchStatus]?.label || batchStatus}
+                </span>
+                {batchStatus === 'draft' && (
+                  <button
+                    onClick={() => handleTransition('submit')}
+                    disabled={transitionBusy || studentsGrades.length === 0}
+                    className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] rounded-full flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Kirim
+                  </button>
+                )}
+                {isAdminType && batchStatus === 'submitted' && (
+                  <button
+                    onClick={() => handleTransition('verify')}
+                    disabled={transitionBusy}
+                    className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-[11px] rounded-full flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Verifikasi
+                  </button>
+                )}
+                {isAdminType && batchStatus === 'verified' && (
+                  <button
+                    onClick={() => handleTransition('lock')}
+                    disabled={transitionBusy}
+                    className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] rounded-full flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Lock className="w-3.5 h-3.5" /> Kunci
+                  </button>
+                )}
+                {isAdminType && (batchStatus === 'submitted' || batchStatus === 'verified' || batchStatus === 'locked') && (
+                  <button
+                    onClick={() => handleTransition('unlock')}
+                    disabled={transitionBusy}
+                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-full flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Undo2 className="w-3.5 h-3.5" /> Buka Kunci
+                  </button>
+                )}
+                <button
+                  onClick={fetchGroupedGrades}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl"
+                  title="Refresh Data Nilai"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingGrades ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -310,7 +316,7 @@ export default function GradesPage({ user, notify }) {
                             max="100"
                             value={st.task_score ?? ''}
                             onChange={(e) => handleScoreChange(idx, 'task_score', e.target.value)}
-                            placeholder="0-100"
+                            placeholder="0-100" disabled={!canEdit}
                             className="w-20 text-center px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-800 bg-slate-50/50"
                           />
                         </td>
@@ -321,7 +327,7 @@ export default function GradesPage({ user, notify }) {
                             max="100"
                             value={st.midterm_score ?? ''}
                             onChange={(e) => handleScoreChange(idx, 'midterm_score', e.target.value)}
-                            placeholder="0-100"
+                            placeholder="0-100" disabled={!canEdit}
                             className="w-20 text-center px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-800 bg-slate-50/50"
                           />
                         </td>
@@ -332,7 +338,7 @@ export default function GradesPage({ user, notify }) {
                             max="100"
                             value={st.remedial_score ?? ''}
                             onChange={(e) => handleScoreChange(idx, 'remedial_score', e.target.value)}
-                            placeholder="0-100"
+                            placeholder="0-100" disabled={!canEdit}
                             className="w-20 text-center px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-800 bg-slate-50/50"
                           />
                         </td>
@@ -343,14 +349,14 @@ export default function GradesPage({ user, notify }) {
                             max="100"
                             value={st.final_score ?? ''}
                             onChange={(e) => handleScoreChange(idx, 'final_score', e.target.value)}
-                            placeholder="0-100"
+                            placeholder="0-100" disabled={!canEdit}
                             className="w-20 text-center px-2 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-800 bg-slate-50/50"
                           />
                         </td>
                         <td className="px-6 py-3 text-center">
                           <span
                             className={`px-3 py-1 rounded-xl font-extrabold text-xs inline-block ${
-                              st.final_total >= 75
+                              st.final_total >= PASS_THRESHOLD
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : st.final_total !== null
                                 ? 'bg-amber-100 text-amber-800'
@@ -368,150 +374,6 @@ export default function GradesPage({ user, notify }) {
             </div>
           </div>
         </div>
-      )}
-
-      {/* VIEW 2: ADMIN TEACHER ASSIGNMENTS MANAGEMENT */}
-      {activeSubTab === 'assignments' && user?.role === 'admin' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Add Assignment Form */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-amber-600" /> Penugasan Guru Mapel
-            </h3>
-
-            <form onSubmit={handleCreateAssignment} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Guru</label>
-                <select
-                  value={newAssignment.user_id}
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
-                    const u = usersList.find((usr) => usr.id === selectedId);
-                    setNewAssignment({
-                      ...newAssignment,
-                      user_id: selectedId,
-                      teacher_name: u ? u.name : '',
-                    });
-                  }}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                >
-                  <option value="">-- Pilih Guru Terdaftar --</option>
-                  {usersList.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.username} - {u.role})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {!newAssignment.user_id && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Ketik Nama Guru (Manual)</label>
-                  <input
-                    type="text"
-                    required
-                    value={newAssignment.teacher_name}
-                    onChange={(e) => setNewAssignment({ ...newAssignment, teacher_name: e.target.value })}
-                    placeholder="Contoh: Pak Budi"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Kelas</label>
-                <select
-                  value={newAssignment.class_name}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, class_name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border rounded-2xl text-xs bg-slate-50 font-semibold"
-                >
-                  {CLASSES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Mata Pelajaran</label>
-                <select
-                  value={newAssignment.subject_name}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, subject_name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border rounded-2xl text-xs bg-slate-50 font-semibold"
-                >
-                  {SUBJECTS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-2xl transition-all shadow-md shadow-amber-600/20 flex items-center justify-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Simpan Penugasan
-              </button>
-            </form>
-          </div>
-
-          {/* Assignments List */}
-          <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-900 text-sm">
-                Daftar Penugasan Guru Mapel ({assignments.length})
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-4">Nama Guru</th>
-                    <th className="px-6 py-4">Kelas Ampuan</th>
-                    <th className="px-6 py-4">Mata Pelajaran</th>
-                    <th className="px-6 py-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {assignments.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="text-center py-12 text-slate-400">
-                        Belum ada penugasan guru mapel.
-                      </td>
-                    </tr>
-                  ) : (
-                    assignmentPager.pageItems.map((ass) => (
-                      <tr key={ass.id} className="hover:bg-slate-50">
-                        <td className="px-6 py-4 font-bold text-slate-900">{ass.teacher_name}</td>
-                        <td className="px-6 py-4">
-                          <span className="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-xl font-bold">
-                            {ass.class_name}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="px-2.5 py-1 bg-indigo-50 text-indigo-800 rounded-xl font-bold">
-                            {ass.subject_name}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteAssignment(ass.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-xl"
-                            title="Hapus Penugasan"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {assignments.length > 0 && (
-              <PaginationBar page={assignmentPager.page} totalPages={assignmentPager.totalPages} total={assignmentPager.total} perPage={assignmentPager.perPage} onPageChange={assignmentPager.setPage} />
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
