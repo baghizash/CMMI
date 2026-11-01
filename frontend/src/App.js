@@ -2,10 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import NotificationToast from './components/NotificationToast';
+import { ConfirmDialogHost } from './components/ConfirmDialog';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import ProfilePage from './pages/ProfilePage';
 import ScannerPage from './pages/ScannerPage';
 import StudentsPage from './pages/StudentsPage';
+import StudentDetailPage from './pages/StudentDetailPage';
+import StudentTranscriptPage from './pages/StudentTranscriptPage';
+import ParentViewPage from './pages/ParentViewPage';
+import TeacherWorkspacePage from './pages/TeacherWorkspacePage';
 import RecapPage from './pages/RecapPage';
 import SchedulePage from './pages/SchedulePage';
 import UsersPage from './pages/UsersPage';
@@ -31,6 +37,17 @@ function AppContent() {
     navigate('/dashboard');
   };
 
+  // Profil diperbarui dari halaman Profil: segarkan state + simpanan
+  // lokal agar foto dan nama di header langsung berubah.
+  const handleUserUpdate = (patch) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      localStorage.setItem('school_user', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('school_user');
     setUser(null);
@@ -44,15 +61,19 @@ function AppContent() {
         <Navbar user={user} onLogout={handleLogout} notify={notify} />
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className={user ? 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6' : ''}>
         <Routes>
           <Route
             path="/login"
             element={user ? <Navigate to="/dashboard" replace /> : <LoginPage onLoginSuccess={handleLoginSuccess} />}
           />
           <Route
+            path="/profile"
+            element={user ? <ProfilePage user={user} notify={notify} onUserUpdate={handleUserUpdate} /> : <Navigate to="/login" replace />}
+          />
+          <Route
             path="/dashboard"
-            element={user ? <DashboardPage notify={notify} /> : <Navigate to="/login" replace />}
+            element={user ? <DashboardPage notify={notify} user={user} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/scanner"
@@ -60,11 +81,49 @@ function AppContent() {
           />
           <Route
             path="/students"
-            element={user ? <StudentsPage notify={notify} /> : <Navigate to="/login" replace />}
+            element={
+              user ? (
+                user.role === 'guru' ? (
+                  <TeacherWorkspacePage user={user} notify={notify} />
+                ) : (
+                  <StudentsPage notify={notify} />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/students/:id"
+            element={user ? <StudentDetailPage user={user} notify={notify} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/students/:id/nilai"
+            element={user ? <StudentTranscriptPage notify={notify} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/orang-tua/:studentId"
+            element={user ? <ParentViewPage notify={notify} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/grades"
-            element={user ? <GradesPage user={user} notify={notify} /> : <Navigate to="/login" replace />}
+            element={
+              user ? (
+                user.role === 'admin' ? (
+                  <Navigate to="/schedule" replace />
+                ) : user.role === 'guru' ? (
+                  <Navigate to="/students?tab=nilai" replace />
+                ) : (
+                  <GradesPage user={user} notify={notify} />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+<Route
+            path="/penugasan-guru"
+            element={<Navigate to="/schedule" replace />}
           />
           <Route
             path="/recap"
@@ -93,6 +152,7 @@ function AppContent() {
       </main>
 
       <NotificationToast notification={notification} />
+      <ConfirmDialogHost />
     </div>
   );
 }
