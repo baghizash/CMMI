@@ -155,6 +155,73 @@ code {
   }
 }
 
+/* ================= Mode gelap =================
+   Diaktifkan oleh kelas .dark pada pembungkus aplikasi (pilihan
+   user, tersimpan sebagai cmmi-theme). Karena halaman-halaman
+   memakai palet utilitas yang sama (slate + token CMMI), mode
+   gelap cukup memetakan ulang palet itu di satu tempat ini:
+   permukaan menjadi gelap keabu-abuan, teks dibalik terang,
+   garis menjadi putih tipis, dan warna tugas (marine, hadir,
+   telat, alpa, plum, tang) dibuat lebih terang agar tetap
+   terbaca di atas gelap. */
+.dark {
+  background-color: #0E1013;
+  color-scheme: dark;
+}
+.dark .bg-white { background-color: #17191F; }
+.dark .bg-white\/80 { background-color: rgba(19, 21, 25, 0.85); }
+.dark .bg-slate-50 { background-color: #1D2027; }
+.dark .bg-slate-50\/80 { background-color: rgba(29, 32, 39, 0.8); }
+.dark .bg-slate-50\/50 { background-color: rgba(29, 32, 39, 0.5); }
+.dark .bg-slate-50\/70 { background-color: rgba(29, 32, 39, 0.7); }
+.dark .bg-slate-100 { background-color: #121419; }
+.dark .bg-slate-100\/70 { background-color: #0E1013; }
+.dark .bg-slate-200 { background-color: #262A33; }
+.dark .bg-paper { background-color: #121419; }
+.dark .bg-\[\#EFEAE0\]\/90 { background-color: rgba(255, 255, 255, 0.06); }
+.dark .text-ink, .dark .text-slate-900 { color: #F2F4F7; }
+.dark .text-slate-800 { color: #E3E7EC; }
+.dark .text-slate-700 { color: #C4CBD6; }
+.dark .text-ink-soft, .dark .text-slate-600 { color: #A3ACBA; }
+.dark .text-slate-500 { color: #868FA0; }
+.dark .text-slate-400 { color: #707A89; }
+.dark .text-marine { color: #5EA3D0; }
+.dark .text-hadir { color: #3FA96F; }
+.dark .text-telat { color: #D9A441; }
+.dark .text-alpa { color: #E0685F; }
+.dark .text-plum { color: #B07CD8; }
+.dark .border-slate-200, .dark .border-slate-200\/80, .dark .border-slate-200\/60 { border-color: rgba(255, 255, 255, 0.09); }
+.dark .border-slate-100 { border-color: rgba(255, 255, 255, 0.06); }
+.dark .border-slate-300 { border-color: rgba(255, 255, 255, 0.16); }
+.dark .border-\[\#E7E0D0\] { border-color: rgba(255, 255, 255, 0.09); }
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255, 255, 255, 0.06); }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.13); }
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.13); }
+.dark .bg-emerald-50\/90 { background-color: rgba(16, 185, 129, 0.16); }
+.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.14); }
+.dark .bg-indigo-50\/70 { background-color: rgba(99, 102, 241, 0.12); }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.13); }
+.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.12); }
+.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.12); }
+.dark [class~="bg-marine-tint"] { background-color: rgba(29, 92, 138, 0.28); }
+.dark [class~="bg-alpa-tint"] { background-color: rgba(179, 55, 47, 0.22); }
+.dark [class~="bg-piket-tint"] { background-color: rgba(217, 112, 160, 0.16); }
+.dark .hover\:bg-slate-50:hover { background-color: rgba(255, 255, 255, 0.06); }
+.dark .hover\:bg-slate-100:hover { background-color: rgba(255, 255, 255, 0.06); }
+.dark .hover\:bg-slate-200\/50:hover { background-color: rgba(255, 255, 255, 0.06); }
+.dark .hover\:bg-slate-200:hover { background-color: rgba(255, 255, 255, 0.08); }
+.dark input, .dark select, .dark textarea {
+  background-color: #1D2027;
+  color: #E8ECF1;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.dark input::placeholder, .dark textarea::placeholder { color: #69707E; }
+.dark .shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.dark .shadow-tile, .dark .shadow-soft, .dark .shadow-tactile {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
 /* Cetak satu kartu siswa: hanya area kartu yang tercetak, utuh satu halaman */
 @page {
   size: A4;
